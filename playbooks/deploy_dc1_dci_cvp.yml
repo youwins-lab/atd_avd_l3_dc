@@ -1,0 +1,20 @@
+---
+- name: Deploying DC1 DCI Changes via CVP
+  hosts: dc1_dci
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Deploy configurations and tags to CloudVision
+      ansible.builtin.import_role:
+          name: arista.avd.cv_deploy
+      vars:
+        cv_server: cvp
+        cv_username: "{{ ansible_user }}"
+        cv_password: "{{ ansible_password }}"
+        cv_verify_certs: false
+        cv_run_change_control: true
+        # These devices are not built by eos_designs/eos_cli_config_gen, so read
+        # per-device variables (tags, etc.) from Ansible vars instead of structured config files.
+        read_structured_config_from_file: false
+        # Static configs for these devices live in dci_configs instead of the default intended/configs.
+        eos_config_dir: "{{ inventory_dir }}/dci_configs"

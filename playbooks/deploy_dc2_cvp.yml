@@ -1,0 +1,15 @@
+---
+- name: Deploying DC2 Changes via CVP
+  hosts: dc2_fabric
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Deploy configurations and tags to CloudVision
+      ansible.builtin.import_role:
+          name: arista.avd.cv_deploy
+      vars:
+        cv_server: cvp
+        cv_username: "{{ ansible_user }}"
+        cv_password: "{{ ansible_password }}"
+        cv_verify_certs: false
+        cv_run_change_control: false

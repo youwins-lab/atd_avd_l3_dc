@@ -1,0 +1,22 @@
+---
+# DC1 fab ports vars
+
+servers:
+  - name: s1-host1
+    adapters:
+      - endpoint_ports: [Ethernet1, Ethernet2]
+        switch_ports: [Ethernet4, Ethernet4]
+        switches: [s1-leaf1, s1-leaf2]
+        mode: trunk
+        vlans: "10,20"
+        port_channel:
+          mode: active
+  - name: s1-host2
+    adapters:
+      - endpoint_ports: [Ethernet1, Ethernet2]
+        switch_ports: [Ethernet4, Ethernet4]
+        switches: [s1-leaf3, s1-leaf4]
+        mode: trunk
+        vlans: "10,20"
+        port_channel:
+          mode: active
