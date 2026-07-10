@@ -108,6 +108,16 @@ You can view the password is set. This is the same password displayed when you c
 echo $LABPASSPHRASE
 ```
 
+`dc1.yml` and `dc2.yml` ship with `ansible_password: "###########"` as a placeholder so real lab credentials never get committed to the repo. Use `sed` to substitute your `LABPASSPHRASE` into both files in place:
+
+``` bash
+sed -i "s/^ansible_password:.*/ansible_password: ${LABPASSPHRASE}/" \
+sites/dc1/group_vars/dc1.yml \
+sites/dc2/group_vars/dc2.yml
+```
+
+This finds the `ansible_password:` line in each file and replaces it with your actual lab password, which ansible then uses to authenticate to the EOS switches and CVP over eAPI. Since this edits the files in your local clone (not the placeholder in the upstream repo), be careful not to `git add`/commit this change back.
+
 ### STEP #4 - Change directory to the actual repo
 ``` bash
 cd atd_avd_l3_dc
