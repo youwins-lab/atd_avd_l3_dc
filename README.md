@@ -116,7 +116,7 @@ sites/dc1/group_vars/dc1.yml \
 sites/dc2/group_vars/dc2.yml
 ```
 
-This finds the `ansible_password:` line in each file and replaces it with your actual lab password, which ansible then uses to authenticate to the EOS switches and CVP over eAPI. Since this edits the files in your local clone (not the placeholder in the upstream repo), be careful not to `git add`/commit this change back.
+This finds the `ansible_password:` line in each file and replaces it with your actual lab password, which ansible then uses to authenticate to the EOS switches and CVP over eAPI.
 
 ### STEP #4 - Change directory to the actual repo
 ``` bash
@@ -161,6 +161,36 @@ deploy_dc2_dci: ## Deploy DC2 DCI configs to non-avd devices
 **Inventory File:**  `dc2/inventory.yml`
 
 **Description:** This command deploys a few interface and BGP configuration changes to the s2-core1 and s2-core2 devices in datacenter2.  This is required to enable routing between the two datacenter fabrics.  This playbook uses the eos_config module to merge the config changes on the devices via their eAPI.
+
+<br>
+<br>
+
+**Command:**  `make deploy_dc1_dci_cvp`
+
+```bash
+deploy_dc1_dci_cvp: ## Deploy DC1 DCI configs to non-avd devices through CVP
+	ansible-playbook playbooks/deploy_dc1_dci_cvp.yml -i sites/dc1/inventory.yml
+```
+**Playbook Called:**  `deploy_dc1_dci_cvp.yml`
+
+**Inventory File:**  `dc1/inventory.yml`
+
+**Description:** This is the CVP-based alternative to `make deploy_dc1_dci`, for the same s1-core1 and s1-core2 devices. Since these devices are not built by eos_designs/eos_cli_config_gen, the playbook reads their static configs directly from `sites/dc1/dci_configs` and their tags from Ansible vars rather than AVD structured config, then uploads them to CVP as configlets via the `arista.avd.cv_deploy` role. This playbook sets `cv_run_change_control: true`, so CVP automatically creates **and executes** the resulting change control without further user intervention.
+
+<br>
+<br>
+
+**Command:**  `make deploy_dc2_dci_cvp`
+
+```bash
+deploy_dc2_dci_cvp: ## Deploy DC2 DCI configs to non-avd devices through CVP
+	ansible-playbook playbooks/deploy_dc2_dci_cvp.yml -i sites/dc2/inventory.yml
+```
+**Playbook Called:**  `deploy_dc2_dci_cvp.yml`
+
+**Inventory File:**  `dc2/inventory.yml`
+
+**Description:** This is the CVP-based alternative to `make deploy_dc2_dci`, for the same s2-core1 and s2-core2 devices, using the same `arista.avd.cv_deploy` approach as `make deploy_dc1_dci_cvp`. Unlike the DC1 version, this playbook sets `cv_run_change_control: false`, so CVP uploads the configlets but does **not** automatically create/execute the change control — you'll need to create and approve it manually in the CVP UI.
 
 <br>
 <br>
