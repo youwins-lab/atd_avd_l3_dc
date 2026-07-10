@@ -1,7 +1,7 @@
 # Deploy L3LS with EVPN VXLAN using AVD and CVP
 This PoC will allow you to use Arista's AVD automation framework to deploy a dual datacenter, layer 3 leaf spine fabric with EVPN VXLAN.  Additionally, it incorporates CVP into the CI/CD pipeline for configuration change management and auditing.  The PoC has some devices with static configurations that need to be deployed with the via ansible playbooks utilizing the **eos_config** role, and some that you will be modifying and implementing yourself using AVD.  
 
-***Note:*** This PoC is built to work with AVD 3.8.  Work is currently in progress to update everything to support AVD 4.0.
+***Note:*** This PoC is built to work with AVD 6.3.0.
 
 ## Datacenter Fabric Topology
 Below is a network diagram of the datacenter topology you will be working with.  In this topology, all `s1` devices correspond with `sites/dc1`, and all `s2` devices correspond with `sites/dc2`.
@@ -63,12 +63,13 @@ From your ATD environment, launch the programmability IDE, enter the password, a
 
 ![IDE](images/programmability_ide.png)
 
-## STEP #1 - Install deepmerge
+## STEP #1 - Install deepmerge and pyavd
 
-- From the terminal session, run the following command.
+- From the terminal session, run the following commands. AVD 6.x renders configs via `pyavd`, which is installed separately from the ansible collection.
 
 ``` bash
 pip install deepmerge
+pip install pyavd==6.3.0
 ```
 
 ## STEP #2 - Clone Necessary Repos
@@ -79,19 +80,19 @@ pip install deepmerge
 cd labfiles
 ```
 
-- Install the AVD 3.8 collection
+- Install the AVD 6.3.0 collection
 
 ``` bash
-ansible-galaxy collection install arista.avd:==3.8.0
+ansible-galaxy collection install arista.avd:==6.3.0
 ```
 
 - Clone the POC Repo
 
 ``` bash
-git clone https://github.com/PacketAnglers/atd-avd-evpn-vxlan.git
+git clone https://github.com/youwins-lab/atd_avd_l3_dc.git
 ```
 
-- At this point you should see the `atd-avd-evpn-vxlan` directory under the labfiles directory.
+- At this point you should see the `atd_avd_l3_dc` directory under the labfiles directory.
 
 ### STEP #3 - Setup Lab Password Environment Variable
 
@@ -109,7 +110,7 @@ echo $LABPASSPHRASE
 
 ### STEP #4 - Change directory to the actual repo
 ``` bash
-cd atd-avd-evpn-vxlan
+cd atd_avd_l3_dc
 ```
 
 ## Building/Deploying Configurations & Labs Info

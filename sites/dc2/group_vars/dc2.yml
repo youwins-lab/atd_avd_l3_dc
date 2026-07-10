@@ -5,7 +5,7 @@ fabric_name: dc2_fabric
 # Credentials for CVP and EOS Switches
 ansible_user: arista
 # Update password with lab credentials
-ansible_password: h8lxacoh35bg9cc0
+ansible_password: "###########"
 ansible_network_os: arista.eos.eos
 # Configure privilege escalation
 ansible_become: true
