@@ -22,6 +22,14 @@ deploy_dc1_dci_cvp: ## Deploy DC1 DCI configs to non-avd devices through CVP
 deploy_dc2_dci_cvp: ## Deploy DC2 DCI configs to non-avd devices through CVP
 	ansible-playbook playbooks/deploy_dc2_dci_cvp.yml -i sites/dc2/inventory.yml
 
+.PHONY: deploy_dc1_host_cvp
+deploy_dc1_host_cvp: ## Deploy DC1 s1-host1/host2 configs to non-avd devices through CVP
+	ansible-playbook playbooks/deploy_dc1_host_cvp.yml -i sites/dc1/inventory.yml
+
+.PHONY: deploy_dc2_host_cvp
+deploy_dc2_host_cvp: ## Deploy DC2 s2-host1/host2 configs to non-avd devices through CVP
+	ansible-playbook playbooks/deploy_dc2_host_cvp.yml -i sites/dc2/inventory.yml
+
 .PHONY: build_dc1
 build_dc1: ## Build AVD Configs for DC1
 	ansible-playbook playbooks/build_dc1.yml -i sites/dc1/inventory.yml

@@ -44,6 +44,12 @@ dc1:
       hosts:
         s1-core1:
         s1-core2:
+    dc1_hosts:
+      hosts:
+        s1-host1:
+          ansible_host: 192.168.0.16
+        s1-host2:
+          ansible_host: 192.168.0.17
 
 
 

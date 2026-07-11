@@ -23,14 +23,19 @@ Since this topology is for two datacenters, the vars and inventory directories a
     |---deploy_dc1_cvp.yml
     |---deploy_dc1_dci_eapi.yml
     |---deploy_dc1_eapi.yml
+    |---deploy_dc1_host_cvp.yml
     |---deploy_dc2_cvp.yml
     |---deploy_dc2_dci_eapi.yml
     |---deploy_dc2_eapi.yml
+    |---deploy_dc2_host_cvp.yml
 |---sites
     |---dc1 [Inventory and VARs for DC1 only]
     |   |---dci_configs [Non AVD Configs for Topology]
     |   |   |---s1-core1.cfg
     |   |   |---s1-core2.cfg
+    |   |---host_configs [Non AVD Configs for Topology]
+    |   |   |---s1-host1.cfg
+    |   |   |---s1-host2.cfg
     |   |---groups_vars
     |   |   |---dc1_fabric_ports.yml
     |   |   |---dc1_fabric_services.yml
@@ -44,6 +49,9 @@ Since this topology is for two datacenters, the vars and inventory directories a
     |   |---dci_configs [Non AVD Configs for Topology]
     |   |   |---s2-core1.cfg
     |   |   |---s2-core2.cfg
+    |   |---host_configs [Non AVD Configs for Topology]
+    |   |   |---s2-host1.cfg
+    |   |   |---s2-host2.cfg
     |   |---groups_vars
     |   |   |---dc2_fabric_ports.yml
     |   |   |---dc2_fabric_services.yml
@@ -195,6 +203,36 @@ deploy_dc2_dci_cvp: ## Deploy DC2 DCI configs to non-avd devices through CVP
 <br>
 <br>
 
+**Command:**  `make deploy_dc1_host_cvp`
+
+```bash
+deploy_dc1_host_cvp: ## Deploy DC1 s1-host1/host2 configs to non-avd devices through CVP
+	ansible-playbook playbooks/deploy_dc1_host_cvp.yml -i sites/dc1/inventory.yml
+```
+**Playbook Called:**  `deploy_dc1_host_cvp.yml`
+
+**Inventory File:**  `dc1/inventory.yml`
+
+**Description:** Deploys the static configs for s1-host1 and s1-host2, the dual-homed server endpoints attached via MLAG port-channel to LeafPair1 (s1-leaf1/s1-leaf2) and LeafPair2 (s1-leaf3/s1-leaf4) respectively. Like the DCI devices, these are not built by eos_designs/eos_cli_config_gen — their static configs live in `sites/dc1/host_configs` and get uploaded to CVP as configlets via the `arista.avd.cv_deploy` role, with `cv_run_change_control: true` so the resulting change control is created and executed automatically. Each host configures a Port-Channel1 (LACP active) trunking VLANs 10/20 back to its leaf pair, plus Vlan10/Vlan20 SVIs with test IP addresses so you can ping the leaf anycast gateways (10.10.10.1/10.20.20.1) and the DC2 hosts across the EVPN-VXLAN stretch.
+
+<br>
+<br>
+
+**Command:**  `make deploy_dc2_host_cvp`
+
+```bash
+deploy_dc2_host_cvp: ## Deploy DC2 s2-host1/host2 configs to non-avd devices through CVP
+	ansible-playbook playbooks/deploy_dc2_host_cvp.yml -i sites/dc2/inventory.yml
+```
+**Playbook Called:**  `deploy_dc2_host_cvp.yml`
+
+**Inventory File:**  `dc2/inventory.yml`
+
+**Description:** This is the DC2 equivalent of `make deploy_dc1_host_cvp`, deploying the static configs for s2-host1 and s2-host2 (dual-homed to LeafPair1 and LeafPair2 in DC2) from `sites/dc2/host_configs` via the same `arista.avd.cv_deploy` approach.
+
+<br>
+<br>
+
 **Command:**  `make build_dc1`
 
 ```bash
@@ -297,5 +335,7 @@ Follow the below steps of which make commands to run to build the initial fabric
     1) login to cvp and watch the tasks and change control screens to see the tasks auto-created and executed.
 6) Deploy dc2 configs via CVP:  `make deploy_dc2_cvp`
     1) login to cvp and watch the tasks and change control screens to see the tasks auto-created and executed.
-7) Login to switch CLIs and verify configs and operation.
-8) Continue on with labs in the `lab guide` directory.
+7) Deploy dc1 host configs via CVP:  `make deploy_dc1_host_cvp`
+8) Deploy dc2 host configs via CVP:  `make deploy_dc2_host_cvp`
+9) Login to switch CLIs and verify configs and operation.
+10) Continue on with labs in the `lab guide` directory.
