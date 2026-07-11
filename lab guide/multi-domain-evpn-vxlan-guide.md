@@ -271,7 +271,45 @@ tenants:
 
 <br>
 
-## 10. 참고 — 이 설계와 관련 있는 파일
+## 10. ANTA로 배포 상태 검증하기
+
+§8~§9는 사람이 직접 ping으로 확인한 결과였습니다. 이 저장소는 같은 검증을 자동화하는 수단으로 **ANTA**(Arista Network Test Automation)도 함께 포함하고 있습니다.
+
+### ANTA란
+
+ANTA는 EOS 장비의 운영 상태를 자동으로 검증하는 오픈소스 Python 테스트 프레임워크입니다([anta.arista.com](https://anta.arista.com)). AVD는 `arista.avd.anta_runner` 롤로 이를 Ansible과 통합합니다. 이 롤의 가장 큰 특징은, 테스트를 직접 작성하지 않아도 **AVD가 만든 structured config(§4의 출처)를 그대로 읽어서 장비별 테스트 카탈로그를 자동 생성**해준다는 점입니다 — BGP 이웃, 인터페이스 상태, MLAG, VXLAN/VNI 매핑처럼 이 설계에서 실제로 구성한 항목들이 자동으로 테스트 대상이 됩니다. 물론 사용자가 직접 만든 테스트 카탈로그를 추가로 얹는 것도 가능합니다.
+
+### 이 저장소에서 실행되는 위치
+
+- `playbooks/deploy_dc1_eapi.yml`에는 config 배포 뒤에 `arista.avd.anta_runner`를 실행하는 두 번째 play가 이어져 있습니다. 즉 `make deploy_dc1_eapi`를 실행하면 **배포와 검증이 한 번에** 이루어집니다.
+- `playbooks/deploy_dc2_eapi.yml`에는 아직 이 검증 play가 없습니다 — DC1에만 구성되어 있고, DC2에 동일하게 추가하는 것은 README에서 언급한 "직접 구현해봐야 할" 부분 중 하나입니다.
+- CVP로 배포하는 `deploy_dc{n}_cvp.yml` / `deploy_dc{n}_host_cvp.yml` / `deploy_dc{n}_dci_cvp.yml`에는 ANTA가 포함되어 있지 않습니다. CVP의 change control 성공 여부와 ANTA의 상태 검증은 서로 별개입니다.
+
+### 결과물이 쌓이는 위치
+
+| 경로 | 내용 |
+| --- | --- |
+| `sites/dc1/anta/avd_catalogs/*.json` | structured config로부터 자동 생성된 장비별 테스트 카탈로그 |
+| `sites/dc1/anta/reports/anta_report.json` | 전체 테스트 결과(자동화·CI 파싱용) |
+| `sites/dc1/anta/reports/anta_report.csv` | 테스트 결과를 표 형태로(스프레드시트에서 열어보기 좋음) |
+| `sites/dc1/anta/reports/anta_report.md` | 사람이 읽기 좋은 요약 리포트 |
+
+### 결과 확인 절차
+
+1. `make deploy_dc1_eapi`를 실행합니다. config 배포 태스크 다음에 "Run ANTA on EOS devices" 태스크가 이어서 실행됩니다.
+2. 이 태스크는 **실패나 에러로 판정된 테스트가 하나라도 있으면 자체적으로 실패 처리**됩니다. 콘솔에 출력되는 play recap에서 바로 확인할 수 있으니, 우선 여기서 전체 통과 여부부터 확인하세요.
+3. 자세한 내용은 `sites/dc1/anta/reports/anta_report.md`를 엽니다. 다음 세 가지를 순서대로 보면 됩니다.
+   - **Summary Totals**: 전체 테스트 중 성공/스킵/실패/에러 개수
+   - **Summary Totals Device Under Test**: 장비별 성공/실패 breakdown — 어느 장비에 문제가 있는지 먼저 좁힙니다
+   - **Summary Totals Per Category**: BGP/Interfaces/Routing 등 카테고리별 breakdown — 어떤 영역의 문제인지 좁힙니다
+   - 이후 **Test Results** 표에서 실패한 개별 테스트를 찾아 `Message(s)` 컬럼을 확인하면, 실제 EOS 출력이나 설정 diff가 함께 기록되어 있어 원인을 바로 알 수 있습니다(예: `VerifyRunningConfigDiffs` 테스트는 running-config와 startup-config의 차이를 그대로 보여줍니다).
+4. 특정 장비나 카테고리만 다시 보고 싶다면 `ansible-playbook ... --limit <hostname>`으로 대상을 좁히거나, `anta_runner`의 `avd_catalogs_filters` 변수로 카테고리/테스트를 걸러서 재실행할 수 있습니다.
+
+> 이 저장소에는 이전에 실행된 `sites/dc1/anta/reports/anta_report.md` 예시가 이미 포함되어 있습니다. 다만 이는 특정 시점의 스냅샷이므로, 현재 배포 상태를 확인하려면 `make deploy_dc1_eapi`를 다시 실행해 리포트를 새로 생성하세요.
+
+<br>
+
+## 11. 참고 — 이 설계와 관련 있는 파일
 
 | 파일 | 내용 |
 | --- | --- |
@@ -281,3 +319,4 @@ tenants:
 | `sites/dc{n}/dci_configs/*.cfg` | core 라우터 정적 설정(§5) |
 | `sites/dc{n}/host_configs/*.cfg` | host 엔드포인트 정적 설정(§8) |
 | `sites/dc{n}/intended/structured_configs/*.yml` | AVD가 실제로 배정한 최종 IP/AS (§4의 출처) |
+| `playbooks/deploy_dc1_eapi.yml`, `sites/dc1/anta/` | ANTA 자동 검증 및 결과물(§10) |
