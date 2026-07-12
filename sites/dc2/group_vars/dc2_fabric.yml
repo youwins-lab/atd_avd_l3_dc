@@ -166,6 +166,15 @@ l3leaf:
         tenants: [ATD_DC]
         tags: ['DC']
       bgp_as: 65102
+      # lab guide/evpn-vxlan-labs.md Lab 4에서 이 structured_config 블록의 주석을 해제합니다.
+      # structured_config:
+      #   monitor_connectivity:
+      #     interval: 5
+      #     vrfs:
+      #       - name: A
+      #         hosts:
+      #           - name: s1-host1
+      #             ip: 10.10.10.11
       nodes:
         - name: s2-leaf3
           id: 115

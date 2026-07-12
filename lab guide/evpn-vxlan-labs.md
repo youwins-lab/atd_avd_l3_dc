@@ -1,6 +1,6 @@
 # EVPN VXLAN 랩
 
-이 랩들의 목표는 AVD가 Day 2 이후의 네트워크 운영을 얼마나 쉽게 만들어주는지 보여주는 것입니다. 아래 세 개의 랩을 진행합니다.
+이 랩들의 목표는 AVD가 Day 2 이후의 네트워크 운영을 얼마나 쉽게 만들어주는지 보여주는 것입니다. 아래 네 개의 랩을 진행합니다.
 
 > 아래 예시들은 이 저장소의 실제 AVD 6.3.0 스키마(`sites/dc{n}/group_vars/dc{n}_fabric.yml`, `dc{n}_fabric_services.yml`의 현재 내용)를 그대로 따릅니다. 값을 넣기 전에 해당 파일을 먼저 열어 기존 항목의 들여쓰기와 구조를 확인하세요.
 
@@ -307,3 +307,92 @@ servers:
    - `s1-host1`에서 `ping vrf 100 10.200.200.11`처럼 VRF `100`에서 VRF `200`의 IP로 핑하면 실패하는 것이 정상입니다 — 호스트 자체가 두 VRF를 완전히 분리된 라우팅 테이블로 관리하고, fabric(leaf) 쪽에서도 tenant `New-Tenant`의 VRF `100`/`200`이 서로 다른 VNI(50003/50004)로 격리되어 있기 때문입니다.
    - 반면 `ping vrf 10 10.20.20.11`(VLAN10 → VLAN20, 같은 호스트 내부)처럼 VRF `10`에서 VRF `20`의 IP로 핑하면, 호스트 자체의 라우팅 테이블은 분리되어 있어도 fabric의 leaf 쪽은 VLAN10/20이 여전히 같은 VRF `A`를 공유하므로 **leaf를 거쳐서** 도달합니다(호스트 → leaf 게이트웨이 → leaf의 VRF `A` 내부 라우팅 → 목적지 VLAN → 호스트 순서). VLAN 100/200은 leaf 쪽도 서로 다른 VRF라 leaf에서도 막히지만, VLAN 10/20은 호스트만 분리되어 있고 leaf는 하나로 합쳐져 있어 결과적으로 통신이 된다는 차이를 보여줍니다.
    - Lab 2까지 완료된 상태여야 DC 간(`s1-host* ↔ s2-host*`) 스트레치가 동작합니다. Lab 2 없이도 같은 DC 안(`s1-host1 ↔ s1-host2`, 서로 다른 leaf pair)에서는 VRF별 라우팅을 확인할 수 있습니다.
+
+<br>
+<br>
+
+
+## Lab 4 - AVD로 Connectivity Monitoring 설정 (s1-host1 ↔ s2-host2)
+
+지금까지의 랩은 사람이 직접 `ping`을 실행해서 EVPN/VXLAN 스트레치를 검증했습니다. 이 랩에서는 EOS의 **Connectivity Monitor** 기능(`monitor connectivity`)을 AVD로 구성해, leaf 스위치가 원격 호스트를 주기적으로 자동 프로빙(ICMP)하고 그 결과를 `show monitor connectivity` 등으로 상시 확인할 수 있게 만듭니다. AVD 6.3.0 스키마의 `monitor_connectivity` 키(`eos_designs`/`eos_cli_config_gen` 모두 지원)를 `structured_config`로 얹는 방식입니다.
+
+> **모니터링 대상**: `s1-host1`(dc1, `10.10.10.11`)과 `s2-host2`(dc2, `10.10.10.22`)를 서로 반대쪽 DC에서 감시하도록 구성합니다 — dc1의 `LeafPair1`(`s1-leaf1`/`s1-leaf2`, 원래 `s1-host1`이 붙어 있는 leaf pair)이 `s2-host2`를, dc2의 `LeafPair2`(`s2-leaf3`/`s2-leaf4`, 원래 `s2-host2`가 붙어 있는 leaf pair)가 `s1-host1`을 서로 감시합니다. 이렇게 하면 두 leaf pair가 "내 로컬 호스트는 정상인데, 상대편 DC의 호스트까지 도달 가능한가"를 지속적으로 확인하는 구조가 됩니다.
+>
+> **VRF 이름 주의**: Lab 3에서 호스트 장비 자체에는 VLAN 10 전용 로컬 VRF `10`을 만들었지만, 이건 호스트에만 있는 로컬 구성입니다. **leaf/fabric 쪽에서 VLAN 10을 실어나르는 VRF는 여전히 `A`**입니다(Lab 3에서 fabric 쪽은 손대지 않기로 했으므로). 그래서 아래 `monitor_connectivity` 설정은 `vrfs: - name: A`를 사용합니다 — leaf 입장에서는 VLAN 10이 속한 VRF가 `A`이기 때문입니다.
+
+1) `sites/dc1/group_vars/dc1_fabric.yml`을 열어 `LeafPair1` 블록 안에 주석 처리된 `structured_config` 블록을 찾아 주석을 해제합니다.
+
+```yaml
+    - group: LeafPair1
+      filter:
+        tenants: [ATD_DC]
+        tags: ['DC']
+      bgp_as: 65001
+      structured_config:
+        monitor_connectivity:
+          interval: 5
+          vrfs:
+            - name: A
+              hosts:
+                - name: s2-host2
+                  ip: 10.10.10.22
+      nodes:
+        ...
+```
+
+2) `sites/dc2/group_vars/dc2_fabric.yml`을 열어 `LeafPair2` 블록 안에 주석 처리된 `structured_config` 블록의 주석을 해제합니다.
+
+```yaml
+    - group: LeafPair2
+      filter:
+        tenants: [ATD_DC]
+        tags: ['DC']
+      bgp_as: 65102
+      structured_config:
+        monitor_connectivity:
+          interval: 5
+          vrfs:
+            - name: A
+              hosts:
+                - name: s1-host1
+                  ip: 10.10.10.11
+      nodes:
+        ...
+```
+
+`interval: 5`는 5초마다 ICMP 프로브를 보낸다는 뜻입니다(값을 넣지 않으면 EOS 기본값을 사용합니다). `hosts`는 VRF `A` 안에서 프로빙할 대상 목록이며, `name`은 `show monitor connectivity`에 표시되는 라벨일 뿐 실제 장비 이름과 무관해도 되지만, 여기서는 어떤 호스트를 보는지 바로 알 수 있도록 대상 호스트명과 맞췄습니다.
+
+주석을 해제하고 저장한 뒤, 아래 단계를 진행하세요:
+
+1) `make build_dc1`과 `make build_dc2`를 실행하여 새 structured config와 장비 config를 생성합니다.
+
+2) `sites/dc1/intended/configs/s1-leaf1.cfg`(및 `s1-leaf2.cfg`)에 아래와 같은 블록이 추가되었는지 확인합니다.
+
+```
+monitor connectivity
+   interval 5
+   !
+   vrf A
+      !
+      host s2-host2
+         ip 10.10.10.22
+!
+```
+
+`sites/dc2/intended/configs/s2-leaf3.cfg`(및 `s2-leaf4.cfg`)에는 대칭으로 `host s1-host1`, `ip 10.10.10.11` 블록이 있어야 합니다.
+
+3) 자동으로 생성된 문서의 변경 내용을 검토합니다.
+
+4) `make deploy_dc1_cvp`와 `make deploy_dc2_cvp`를 실행하고, CVP에 생성된 change control을 검토한 뒤 승인합니다.
+
+5) Lab 2(Border Leaf)까지 완료된 상태라면, leaf 스위치에 로그인해 아래 명령으로 실시간 모니터링 상태를 확인합니다.
+
+```
+show monitor connectivity
+show monitor connectivity host s2-host2   ! s1-leaf1/s1-leaf2에서
+show monitor connectivity host s1-host1   ! s2-leaf3/s2-leaf4에서
+```
+
+`Reachable` 상태로 표시되면 EVPN/VXLAN 스트레치를 통해 상대편 DC의 호스트까지 지속적으로 도달 가능하다는 뜻입니다. Lab 2를 아직 하지 않았다면(Border Leaf 미배포) DCI 연결이 없어 `Unreachable`로 표시되는 것이 정상이며, 이 자체가 "모니터링이 실제로 장애를 감지한다"는 걸 보여주는 좋은 예시입니다.
+
+6) (선택) 필요하면 `hosts` 목록에 VLAN 20/100/200 IP도 같은 방식으로 추가해 다른 VRF까지 모니터링을 확장할 수 있습니다. 다만 VLAN 100/200은 fabric 쪽 VRF 이름이 `A`가 아니라 `100`/`200`(Lab 3에서 만든 tenant `New-Tenant`)이므로, `vrfs` 리스트에 `name: "100"`, `name: "200"` 항목을 각각 추가해야 합니다.

@@ -103,6 +103,12 @@ already carry VLAN 100/200 (and, per the host-local VRF setup above, all four VL
 per-VLAN VRFs on the host regardless of what the fabric side is doing) and have been deployed via
 `make deploy_dc{n}_host_cvp`, so Lab 3 only touches the fabric side.
 
+**EOS Connectivity Monitor is staged too.** A commented `structured_config.monitor_connectivity` block sits on
+`LeafPair1` in `dc1_fabric.yml` (probing `s2-host2` at `10.10.10.22`) and on `LeafPair2` in `dc2_fabric.yml`
+(probing `s1-host1` at `10.10.10.11`), both under VRF `A` — matching the leaf-side VRF for VLAN 10, *not* the
+host-local VRF `10` from Lab 3. Uncommenting both is `lab guide/evpn-vxlan-labs.md` Lab 4; it requires Lab 2
+(Border Leaf) to actually show `Reachable` since it probes across the DCI.
+
 **global_vars/global_dc_vars.yml** holds settings common to both DCs (mgmt gateway, `management_eapi`,
 cEOS management-interface override, etc.) and is loaded explicitly by `build_dc{n}.yml` via `include_vars`
 before the AVD roles run — it is not picked up by inventory group membership.
