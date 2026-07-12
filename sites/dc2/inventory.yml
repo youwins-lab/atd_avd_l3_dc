@@ -22,10 +22,11 @@ dc2:
               ansible_host: 192.168.0.24
             s2-leaf4:
               ansible_host: 192.168.0.25
-            s2-brdr1:
-              ansible_host: 192.168.0.200
-            s2-brdr2:
-              ansible_host: 192.168.0.201
+            # lab guide/evpn-vxlan-labs.md Lab 2에서 주석 해제
+            # s2-brdr1:
+            #   ansible_host: 192.168.0.200
+            # s2-brdr2:
+            #   ansible_host: 192.168.0.201
         # dc2_hosts:
         #   hosts:
         #     s2-host1:

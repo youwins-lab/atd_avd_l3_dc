@@ -2,6 +2,8 @@
 
 이 문서는 이 저장소가 구현하고 있는 **Multi-Domain EVPN/VXLAN**(독립된 두 데이터센터 패브릭을 EVPN Gateway로 연동하는 설계)을 개념부터 실제 설정, 실제 IP 주소까지 한 번에 이해할 수 있도록 정리한 학습 자료입니다. `README.md`의 설치·배포 가이드와는 별개이며, 실습 과제는 `lab guide/evpn-vxlan-labs.md`에 따로 있습니다.
 
+> **참고**: 이 문서는 Lab 2까지 완료한 **완성된 토폴로지**를 기준으로 설명합니다. 저장소를 처음 clone한 시점에는 dc1/dc2 모두 `LeafPair1`/`LeafPair2`(4-leaf)까지는 정상 빌드되지만, Border Leaf(`s{n}-brdr1`/`s{n}-brdr2`)와 DCI core 라우터로 향하는 `core_interfaces`가 `sites/dc{n}/inventory.yml`/`dc{n}_fabric.yml`에 주석 처리되어 있어 dc1과 dc2가 완전히 **독립된 단일 데이터센터 EVPN/VXLAN 패브릭**으로만 동작합니다. `lab guide/evpn-vxlan-labs.md`의 Lab 2(Border Leaf 추가)를 완료해야 아래 설명대로 EVPN Gateway를 통한 multi-domain 스트레치가 동작합니다. Lab 3(새 tenant `New-Tenant`, VLAN 100/200 추가)은 이 문서의 범위 밖입니다.
+
 <br>
 
 ## 1. Multi-Domain EVPN/VXLAN이란
@@ -252,6 +254,8 @@ tenants:
 | s2-host2 | s2-leaf3 / s2-leaf4 | 10.10.10.22/24 | 10.20.20.22/24 |
 
 실제로 `make deploy_dc1_host_cvp`/`make deploy_dc2_host_cvp`를 배포한 뒤 `s1-host1 → s2-host1`, `s1-host2 → s2-host2` 양방향 ping을 Vlan10/Vlan20 모두에서 0% 패킷 손실로 확인했습니다. DC1과 DC2가 서로 다른 언더레이·AS를 쓰는 독립 도메인인데도, EVPN Gateway 스티칭 덕분에 마치 하나의 L2/L3 네트워크처럼 통신되는 것입니다.
+
+> **참고**: 각 호스트의 `vlan10`/`vlan20`/`vlan100`/`vlan200` SVI는 이제 호스트 장비 자체에서 VLAN ID와 동일한 이름의 로컬 VRF(`vrf 10`/`20`/`100`/`200`)에 배치되어 있고, 각 VRF에는 해당 leaf anycast VIP(`10.10.10.1`, `10.20.20.1`, `10.100.100.1`, `10.200.200.1`)를 향하는 기본 경로(`ip route vrf ... 0.0.0.0/0 ...`)가 설정되어 있습니다. 이는 호스트 장비 로컬 라우팅 테이블 구성일 뿐, leaf/fabric 쪽 VRF 설계(VLAN10/20은 여전히 leaf에서 VRF `A`를 공유)와는 별개입니다. 따라서 호스트에서 ping을 테스트할 때는 `ping 10.20.20.21` 처럼 기본 VRF로 실행하면 안 되고, `ping vrf 20 10.20.20.21`처럼 반드시 `vrf` 키워드로 해당 VLAN의 VRF를 지정해야 합니다.
 
 <br>
 

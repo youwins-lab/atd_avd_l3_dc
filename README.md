@@ -136,22 +136,6 @@ sites/dc2/group_vars/dc2.yml
 cd atd_avd_l3_dc
 ```
 
-## STEP #5 - Claude Code 설치 및 사용
-
-이 랩의 설정 작업(그룹 변수 작성, 인벤토리 구성, 플레이북 실행 결과 확인 등)은 Claude Code를 이용해 진행할 수 있습니다. 아래 명령어로 설치합니다.
-
-``` bash
-curl -fsSL https://claude.ai/install.sh | bash
-```
-
-설치가 끝나면 저장소 루트 디렉토리(`atd_avd_l3_dc`)에서 아래 명령어로 실행합니다.
-
-``` bash
-claude
-```
-
-실행되면 대화형 세션이 시작되며, 이 디렉토리 안의 파일들을 읽고 수정하거나, `make` 명령어와 ansible 플레이북을 대신 실행시키는 등의 작업을 자연어로 요청할 수 있습니다. 세션을 종료하려면 `exit`를 입력하거나 `Ctrl+C`를 두 번 누르면 됩니다.
-
 ## 설정 빌드/배포 및 랩 안내
 
 <br>
@@ -362,3 +346,13 @@ AVD를 이용해 초기 패브릭을 빌드하기 위해 아래 순서대로 mak
 8) CVP를 통해 dc2 host 설정 배포:  `make deploy_dc2_host_cvp`
 9) 스위치 CLI에 로그인하여 설정과 동작을 확인합니다.
 10) `lab guide` 디렉토리의 랩을 계속 진행합니다.
+
+<br>
+<br>
+
+## 부록 - AI 코딩 에이전트 설치 및 사용 (선택)
+
+이 랩의 설정 작업(그룹 변수 작성, 인벤토리 구성, 플레이북 실행 결과 확인 등)은 Claude Code나 Codex CLI 같은 AI 코딩 에이전트를 이용해 진행할 수 있습니다. 설치 방법과 이 저장소(AVD 6.3.0)에서 활용할 수 있는 실전 프롬프트 예시는 **lab guide** 디렉토리의 아래 문서를 참고하세요.
+
+- Claude Code: `claude-code-guide.md`
+- Codex CLI: `codex-cli-guide.md`

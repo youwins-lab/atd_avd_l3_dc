@@ -154,8 +154,6 @@ switchport default mode routed
 | Ethernet3 | P2P_s1-leaf2_Ethernet2 | - | 10.255.0.60/31 | default | 9214 | False | - | - |
 | Ethernet4 | P2P_s1-leaf3_Ethernet2 | - | 10.255.0.56/31 | default | 9214 | False | - | - |
 | Ethernet5 | P2P_s1-leaf4_Ethernet2 | - | 10.255.0.64/31 | default | 9214 | False | - | - |
-| Ethernet7 | P2P_s1-brdr1_Ethernet2 | - | 10.255.0.4/31 | default | 9214 | False | - | - |
-| Ethernet8 | P2P_s1-brdr2_Ethernet2 | - | 10.255.0.12/31 | default | 9214 | False | - | - |
 
 #### Ethernet Interfaces Device Configuration
 
@@ -188,20 +186,6 @@ interface Ethernet5
    mtu 9214
    no switchport
    ip address 10.255.0.64/31
-!
-interface Ethernet7
-   description P2P_s1-brdr1_Ethernet2
-   no shutdown
-   mtu 9214
-   no switchport
-   ip address 10.255.0.4/31
-!
-interface Ethernet8
-   description P2P_s1-brdr2_Ethernet2
-   no shutdown
-   mtu 9214
-   no switchport
-   ip address 10.255.0.12/31
 ```
 
 ### Loopback Interfaces
@@ -327,14 +311,10 @@ ASN Notation: asplain
 
 | Neighbor | Remote AS | VRF | Shutdown | Send-community | Maximum-routes | Allowas-in | BFD | RIB Pre-Policy Retain | Route-Reflector Client | Passive | TTL Max Hops |
 | -------- | --------- | --- | -------- | -------------- | -------------- | ---------- | --- | --------------------- | ---------------------- | ------- | ------------ |
-| 10.1.0.2 | 65099 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
-| 10.1.0.4 | 65099 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
 | 10.1.0.14 | 65001 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
 | 10.1.0.15 | 65002 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
 | 10.1.0.16 | 65001 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
 | 10.1.0.17 | 65002 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
-| 10.255.0.5 | 65099 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
-| 10.255.0.13 | 65099 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
 | 10.255.0.53 | 65001 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
 | 10.255.0.57 | 65002 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
 | 10.255.0.61 | 65001 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
@@ -374,12 +354,6 @@ router bgp 65000
    neighbor IPV4-UNDERLAY-PEERS password 7 <removed>
    neighbor IPV4-UNDERLAY-PEERS send-community
    neighbor IPV4-UNDERLAY-PEERS maximum-routes 256000
-   neighbor 10.1.0.2 peer group EVPN-OVERLAY-LOCAL-PEERS
-   neighbor 10.1.0.2 remote-as 65099
-   neighbor 10.1.0.2 description s1-brdr1_Loopback0
-   neighbor 10.1.0.4 peer group EVPN-OVERLAY-LOCAL-PEERS
-   neighbor 10.1.0.4 remote-as 65099
-   neighbor 10.1.0.4 description s1-brdr2_Loopback0
    neighbor 10.1.0.14 peer group EVPN-OVERLAY-LOCAL-PEERS
    neighbor 10.1.0.14 remote-as 65001
    neighbor 10.1.0.14 description s1-leaf1_Loopback0
@@ -392,12 +366,6 @@ router bgp 65000
    neighbor 10.1.0.17 peer group EVPN-OVERLAY-LOCAL-PEERS
    neighbor 10.1.0.17 remote-as 65002
    neighbor 10.1.0.17 description s1-leaf4_Loopback0
-   neighbor 10.255.0.5 peer group IPV4-UNDERLAY-PEERS
-   neighbor 10.255.0.5 remote-as 65099
-   neighbor 10.255.0.5 description s1-brdr1_Ethernet2
-   neighbor 10.255.0.13 peer group IPV4-UNDERLAY-PEERS
-   neighbor 10.255.0.13 remote-as 65099
-   neighbor 10.255.0.13 description s1-brdr2_Ethernet2
    neighbor 10.255.0.53 peer group IPV4-UNDERLAY-PEERS
    neighbor 10.255.0.53 remote-as 65001
    neighbor 10.255.0.53 description s1-leaf1_Ethernet2

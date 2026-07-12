@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to OpenAI Codex CLI (and other AI coding agents that read `AGENTS.md`) when working with code in this repository. It mirrors `CLAUDE.md`, which Claude Code reads for the same purpose — see `lab guide/claude-code-guide.md` and `lab guide/codex-cli-guide.md` for how to install and use each agent against this repo.
 
 ## What this repo is
 
@@ -119,3 +119,5 @@ above, and a commented-out nested placeholder under `dc{n}_fabric` for a possibl
 - `ansible.cfg` points `collections_paths` at `../ansible-cvp:../ansible-avd:...` — the AVD/CVP collections are
   expected to live as siblings of this repo under `labfiles/`, not just in the default Galaxy install path.
 - README.md is maintained in Korean.
+- Before making CVP/eAPI deploy calls, confirm with the user first — pushing config to switches or CVP is a
+  real, hard-to-reverse action against lab infrastructure, not a local file edit.

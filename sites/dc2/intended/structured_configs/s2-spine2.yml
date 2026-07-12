@@ -48,28 +48,6 @@ ethernet_interfaces:
     peer_type: l3leaf
   switchport:
     enabled: false
-- name: Ethernet7
-  description: P2P_s2-brdr1_Ethernet3
-  shutdown: false
-  mtu: 9214
-  ip_address: 10.255.1.150/31
-  metadata:
-    peer: s2-brdr1
-    peer_interface: Ethernet3
-    peer_type: l3leaf
-  switchport:
-    enabled: false
-- name: Ethernet8
-  description: P2P_s2-brdr2_Ethernet3
-  shutdown: false
-  mtu: 9214
-  ip_address: 10.255.1.158/31
-  metadata:
-    peer: s2-brdr2
-    peer_interface: Ethernet3
-    peer_type: l3leaf
-  switchport:
-    enabled: false
 hostname: s2-spine2
 ip_routing: true
 loopback_interfaces:
@@ -168,30 +146,6 @@ router_bgp:
     metadata:
       peer: s2-leaf4
     description: s2-leaf4_Ethernet3
-  - ip_address: 10.255.1.151
-    peer_group: IPV4-UNDERLAY-PEERS
-    remote_as: '65199'
-    metadata:
-      peer: s2-brdr1
-    description: s2-brdr1_Ethernet3
-  - ip_address: 10.255.1.159
-    peer_group: IPV4-UNDERLAY-PEERS
-    remote_as: '65199'
-    metadata:
-      peer: s2-brdr2
-    description: s2-brdr2_Ethernet3
-  - ip_address: 10.1.0.102
-    peer_group: EVPN-OVERLAY-LOCAL-PEERS
-    remote_as: '65199'
-    metadata:
-      peer: s2-brdr1
-    description: s2-brdr1_Loopback0
-  - ip_address: 10.1.0.104
-    peer_group: EVPN-OVERLAY-LOCAL-PEERS
-    remote_as: '65199'
-    metadata:
-      peer: s2-brdr2
-    description: s2-brdr2_Loopback0
   - ip_address: 10.1.0.114
     peer_group: EVPN-OVERLAY-LOCAL-PEERS
     remote_as: '65101'

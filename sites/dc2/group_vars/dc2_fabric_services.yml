@@ -24,3 +24,32 @@ tenants:
             enabled: true
             mtu: 9014
             ip_address_virtual: 10.20.20.1/24
+  # lab guide/evpn-vxlan-labs.md Lab 3에서 이 tenant 블록의 주석을 해제합니다.
+  # VLAN 100/200은 각각 별도 VRF(이름도 VLAN ID와 동일하게 "100"/"200")로 분리되어 있습니다.
+  # - name: New-Tenant
+  #   mac_vrf_vni_base: 20000
+  #   vrfs:
+  #     - name: "100"
+  #       vrf_vni: 50003
+  #       mlag_ibgp_peering_vlan: 4003
+  #       mlag_ibgp_peering_ipv4_pool: 192.4.4.0/23
+  #       svis:
+  #         - id: 100
+  #           name: onehundred
+  #           description: onehundred
+  #           tags: ['DC']
+  #           enabled: true
+  #           mtu: 9014
+  #           ip_address_virtual: 10.100.100.1/24
+  #     - name: "200"
+  #       vrf_vni: 50004
+  #       mlag_ibgp_peering_vlan: 4004
+  #       mlag_ibgp_peering_ipv4_pool: 192.5.5.0/23
+  #       svis:
+  #         - id: 200
+  #           name: twohundred
+  #           description: twohundred
+  #           tags: ['DC']
+  #           enabled: true
+  #           mtu: 9014
+  #           ip_address_virtual: 10.200.200.1/24
