@@ -86,27 +86,29 @@ VLAN ID), each with a static default route to its leaf anycast VIP (`ip route vr
 is a host-local routing construct only, independent of the fabric/tenant VRF design below, so pings from a host
 must use `ping vrf <n> <ip>`, never the default VRF.
 
-**Border Leafs ship commented out by default in both DCs.** `s{n}-brdr1`/`s{n}-brdr2` (the EVPN Gateway nodes)
-are commented out in `sites/dc{n}/inventory.yml`, the `BrdrLeafs` node_group in `dc{n}_fabric.yml`, and the
-`core_interfaces` section at the bottom of `dc{n}_fabric.yml` (which wires Border Leafs to the DCI core
-routers). With them commented, dc1 and dc2 each build as a fully independent, self-contained single-DC
-EVPN/VXLAN fabric with no DCI/EVPN Gateway connectivity between them. Uncommenting all three spots in both
-DCs is `lab guide/evpn-vxlan-labs.md` Lab 2 — only after that does the multi-domain stretch described in
+**Border Leafs ship commented out by default in both DCs, in two independently-gated layers.** `s{n}-brdr1`/
+`s{n}-brdr2` are commented out in `sites/dc{n}/inventory.yml`, the `BrdrLeafs` node_group in `dc{n}_fabric.yml`,
+and the `core_interfaces` section at the bottom of `dc{n}_fabric.yml` (DCI core P2P links) — uncommenting these
+three spots in both DCs is `lab guide/evpn-vxlan-labs.md` Lab 2. But within `BrdrLeafs`, the `evpn_gateway`
+sub-block (`evpn_l2.enabled` + `remote_peers`) is commented out *separately* and stays that way even after
+Lab 2 — it's `lab guide/evpn-vxlan-labs.md` Lab 3. So after Lab 2 alone, Border Leafs are live fabric members
+(local EVPN overlay, DCI underlay reachable) but the two domains are *not* stitched yet (`s1-host1 → s2-host1`
+ping still fails); only after Lab 3 enables `evpn_gateway` does the multi-domain stretch described in
 `lab guide/multi-domain-evpn-vxlan-guide.md` actually come up.
 
 **A second tenant is staged but commented out too — on the fabric side only.** `New-Tenant` (VLAN 100 in its own
 VRF `"100"`, VLAN 200 in its own VRF `"200"` — unlike `ATD_DC`'s VLANs 10/20, which still share one VRF `A` *on
 the leaf/fabric side*) is written out but commented in `dc{n}_fabric_services.yml`, and `LeafPair1`/`LeafPair2`'s
-`filter.tenants` in `dc{n}_fabric.yml` don't reference it yet — both are `lab guide/evpn-vxlan-labs.md` Lab 3.
-The host side is *not* gated behind Lab 3: `s{n}-host1`/`s{n}-host2`'s static configs and `dc{n}_fabric_ports.yml`
+`filter.tenants` in `dc{n}_fabric.yml` don't reference it yet — both are `lab guide/evpn-vxlan-labs.md` Lab 4.
+The host side is *not* gated behind Lab 4: `s{n}-host1`/`s{n}-host2`'s static configs and `dc{n}_fabric_ports.yml`
 already carry VLAN 100/200 (and, per the host-local VRF setup above, all four VLANs already sit in matching
 per-VLAN VRFs on the host regardless of what the fabric side is doing) and have been deployed via
-`make deploy_dc{n}_host_cvp`, so Lab 3 only touches the fabric side.
+`make deploy_dc{n}_host_cvp`, so Lab 4 only touches the fabric side.
 
 **EOS Connectivity Monitor is staged too.** A commented `structured_config.monitor_connectivity` block sits on
 `LeafPair1` in `dc1_fabric.yml` (probing `s2-host2` at `10.10.10.22`) and on `LeafPair2` in `dc2_fabric.yml`
 (probing `s1-host1` at `10.10.10.11`), both under VRF `A` — matching the leaf-side VRF for VLAN 10, *not* the
-host-local VRF `10` from Lab 3. Uncommenting both is `lab guide/evpn-vxlan-labs.md` Lab 4; it requires Lab 2
+host-local VRF `10` from Lab 4. Uncommenting both is `lab guide/evpn-vxlan-labs.md` Lab 5; it requires Lab 2
 (Border Leaf) to actually show `Reachable` since it probes across the DCI.
 
 **global_vars/global_dc_vars.yml** holds settings common to both DCs (mgmt gateway, `management_eapi`,

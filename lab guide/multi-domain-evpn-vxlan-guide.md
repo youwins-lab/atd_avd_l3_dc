@@ -2,7 +2,9 @@
 
 이 문서는 이 저장소가 구현하고 있는 **Multi-Domain EVPN/VXLAN**(독립된 두 데이터센터 패브릭을 EVPN Gateway로 연동하는 설계)을 개념부터 실제 설정, 실제 IP 주소까지 한 번에 이해할 수 있도록 정리한 학습 자료입니다. `README.md`의 설치·배포 가이드와는 별개이며, 실습 과제는 `lab guide/evpn-vxlan-labs.md`에 따로 있습니다.
 
-> **참고**: 이 문서는 Lab 2까지 완료한 **완성된 토폴로지**를 기준으로 설명합니다. 저장소를 처음 clone한 시점에는 dc1/dc2 모두 `LeafPair1`/`LeafPair2`(4-leaf)까지는 정상 빌드되지만, Border Leaf(`s{n}-brdr1`/`s{n}-brdr2`)와 DCI core 라우터로 향하는 `core_interfaces`가 `sites/dc{n}/inventory.yml`/`dc{n}_fabric.yml`에 주석 처리되어 있어 dc1과 dc2가 완전히 **독립된 단일 데이터센터 EVPN/VXLAN 패브릭**으로만 동작합니다. `lab guide/evpn-vxlan-labs.md`의 Lab 2(Border Leaf 추가)를 완료해야 아래 설명대로 EVPN Gateway를 통한 multi-domain 스트레치가 동작합니다. Lab 3(새 tenant `New-Tenant`, VLAN 100/200 추가)은 이 문서의 범위 밖입니다.
+> **참고**: 이 문서는 Lab 3까지 완료한 **완성된 토폴로지**를 기준으로 설명합니다. 저장소를 처음 clone한 시점에는 dc1/dc2 모두 `LeafPair1`/`LeafPair2`(4-leaf)까지는 정상 빌드되지만, Border Leaf(`s{n}-brdr1`/`s{n}-brdr2`)와 DCI core 라우터로 향하는 `core_interfaces`가 `sites/dc{n}/inventory.yml`/`dc{n}_fabric.yml`에 주석 처리되어 있어 dc1과 dc2가 완전히 **독립된 단일 데이터센터 EVPN/VXLAN 패브릭**으로만 동작합니다. Border Leaf 자체는 `lab guide/evpn-vxlan-labs.md`의 **Lab 2**에서 fabric에 추가되지만, 이 문서 §6에서 설명하는 `evpn_gateway`(원격 도메인 재발신) 서브 블록은 Lab 2에서도 계속 주석 상태로 남아 있습니다 — 그래서 Lab 2만 끝낸 시점에는 두 Border Leaf가 서로의 DCI 언더레이는 연결되어 있어도 EVPN 오버레이는 아직 스티칭되지 않은 상태(`s1-host1 → s2-host1` ping이 실패하는 상태)입니다. `evpn_gateway`를 켜서 아래 설명대로 EVPN Gateway를 통한 multi-domain 스트레치를 실제로 동작시키는 것이 **Lab 3**입니다. Lab 4(새 tenant `New-Tenant`, VLAN 100/200 추가)는 이 문서의 범위 밖입니다.
+>
+> `lab guide/evpn-vxlan-labs.md`의 **Lab 3**은 `evpn_gateway` 활성화에 이어 이 문서 §6·§9·§10에서 설명한 내용(EVPN Gateway 피어링, 도메인 재발신, 패킷 여정, ANTA 검증)을 실제 명령어로 직접 확인하는 실습입니다 — 이 문서를 읽었다면 Lab 3에서 그 내용을 손으로 검증해 보세요.
 
 <br>
 
