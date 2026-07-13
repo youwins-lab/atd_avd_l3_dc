@@ -230,6 +230,8 @@ Lab 2에서 Border Leaf를 fabric에 편입시켰지만 `evpn_gateway` 블록은
       evpn_gateway:
         evpn_l2:
           enabled: true
+        evpn_l3:
+          enabled: true
         remote_peers:
           - hostname: s2-brdr1
             ip_address: 10.1.0.102
@@ -247,6 +249,8 @@ Lab 2에서 Border Leaf를 fabric에 편입시켰지만 `evpn_gateway` 블록은
       evpn_gateway:
         evpn_l2:
           enabled: true
+        evpn_l3:
+          enabled: true
         remote_peers:
         - hostname: s1-brdr1
           ip_address: 10.1.0.2
@@ -256,6 +260,8 @@ Lab 2에서 Border Leaf를 fabric에 편입시켰지만 `evpn_gateway` 블록은
           bgp_as: 65099
       nodes:
 ```
+
+`evpn_l2`는 VLAN 10/20 자체의 stretch(Type-2/3 경로)를 담당합니다. `evpn_l3`(Type-5/IP-prefix 경로 릴레이)는 이 랩에서 검증할 호스트 간 통신에는 필요 없지만, Border Leaf가 반대쪽 도메인으로 릴레이할 수 있는 경로 타입을 넓혀 두는 것이라 함께 켜 둡니다 — Lab 5(Connectivity Monitoring)에서 leaf마다 만드는 전용 Loopback 주소가 바로 이 `evpn_l3` 덕분에 DC 경계를 넘어갑니다.
 
 주석을 해제하고 저장한 뒤, `make build_dc1`과 `make build_dc2`를 실행해 structured config와 장비 config를 다시 생성하고, `make deploy_dc1_cvp`/`make deploy_dc2_cvp`로 배포·승인합니다. 이제부터 아래 단계로 실제 동작을 검증합니다.
 
@@ -395,90 +401,20 @@ servers:
 
 지금까지의 랩은 사람이 직접 `ping`을 실행해서 EVPN/VXLAN 스트레치를 검증했습니다. 이 랩에서는 EOS의 **Connectivity Monitor** 기능(`monitor connectivity`)을 AVD로 구성해, leaf 스위치가 원격 호스트를 주기적으로 자동 프로빙(ICMP)하고 그 결과를 `show monitor connectivity`로 상시 확인할 수 있게 만듭니다. AVD 6.3.0 스키마의 `monitor_connectivity` 키(`eos_designs`/`eos_cli_config_gen` 모두 지원)를 `structured_config`로 얹는 방식입니다.
 
-이 랩은 두 단계로 진행됩니다. **1단계**는 문서·스키마상 "정상적인" 최소 구성이고, **2단계**는 이 랩 환경(anycast 게이트웨이 + Border Leaf 멀티 도메인 스트레치)에서 1단계만으로는 왜 동작하지 않는지 직접 확인하고, 그 원인을 하나씩 제거해 실제로 `0% packet loss`를 만드는 과정입니다. 원인 규명 자체가 EVPN/VXLAN 설계를 이해하는 데 큰 도움이 되므로, 결과만 베끼지 말고 각 단계의 "왜"를 꼭 함께 읽어보세요.
-
 > **모니터링 대상**: `s1-host1`(dc1, `10.10.10.11`)과 `s2-host2`(dc2, `10.10.10.22`)를 서로 반대쪽 DC에서 감시하도록 구성합니다 — dc1의 `LeafPair1`(`s1-leaf1`/`s1-leaf2`, 원래 `s1-host1`이 붙어 있는 leaf pair)이 `s2-host2`를, dc2의 `LeafPair2`(`s2-leaf3`/`s2-leaf4`, 원래 `s2-host2`가 붙어 있는 leaf pair)가 `s1-host1`을 서로 감시합니다. 이렇게 하면 두 leaf pair가 "내 로컬 호스트는 정상인데, 상대편 DC의 호스트까지 도달 가능한가"를 지속적으로 확인하는 구조가 됩니다.
 >
 > **VRF 이름 주의**: 호스트 장비 자체에는 VLAN 10 전용 로컬 VRF `10`이 있지만, 이건 호스트에만 있는 로컬 구성입니다. **leaf/fabric 쪽에서 VLAN 10을 실어나르는 VRF는 여전히 `A`**입니다(Lab 4에서도 `ATD_DC`의 fabric 쪽 VRF는 손대지 않았으므로). 그래서 아래 `monitor_connectivity` 설정은 `vrfs: - name: A`를 사용합니다 — leaf 입장에서는 VLAN 10이 속한 VRF가 `A`이기 때문입니다.
 >
-> **선행 조건**: 이 랩은 Lab 2(Border Leaf)와 Lab 3(EVPN Gateway)까지 완료되어 dc1 ↔ dc2 스트레치가 살아있는 상태를 전제로 합니다.
+> **선행 조건**: 이 랩은 Lab 2(Border Leaf)와 Lab 3(EVPN Gateway)까지 완료되어 dc1 ↔ dc2 스트레치가 살아있는 상태를 전제로 합니다. Lab 3에서 `evpn_gateway`에 `evpn_l3`까지 함께 켰다면(Lab 3 참고), 이 랩에서 만들 leaf 전용 주소가 DC 경계를 넘어가는 데 필요한 준비는 이미 끝나 있습니다.
 
-### 1단계 - 기본 골격 구성
+이 랩에서 구성할 내용은 크게 두 부분입니다.
 
-1) `sites/dc1/group_vars/dc1_fabric.yml`을 열어 `LeafPair1` 블록 안에 주석 처리된 `structured_config` 블록을 찾아 주석을 해제합니다.
+- **프로브 자체** — `monitor_connectivity`로 5초 간격 ICMP 프로브를 켭니다.
+- **프로브 전용 소스 주소** — VLAN 10의 게이트웨이는 두 DC 전체가 공유하는 anycast 주소(`10.10.10.1`)이므로, leaf가 자기 자신을 대표하는 고유 주소로 프로브를 보내도록 leaf마다 전용 Loopback과 source-nat를 하나씩 마련합니다.
 
-```yaml
-    - group: LeafPair1
-      filter:
-        tenants: [ATD_DC, New-Tenant]
-        tags: ['DC']
-      bgp_as: 65001
-      structured_config:
-        monitor_connectivity:
-          shutdown: false
-          interval: 5
-          vrfs:
-            - name: A
-              hosts:
-                - name: s2-host2
-                  ip: 10.10.10.22
-      nodes:
-        ...
-```
+### 1) leaf마다 전용 소스 주소 구성 — Loopback + `virtual_source_nat_vrfs`
 
-2) `sites/dc2/group_vars/dc2_fabric.yml`을 열어 `LeafPair2` 블록 안에 주석 처리된 `structured_config` 블록의 주석을 해제합니다(대상은 `s1-host1`/`10.10.10.11`로 대칭).
-
-`interval: 5`는 5초마다 ICMP 프로브를 보낸다는 뜻입니다. `hosts`는 VRF `A` 안에서 프로빙할 대상 목록이며, `name`은 `show monitor connectivity`에 표시되는 라벨일 뿐 실제 장비 이름과 무관해도 되지만, 여기서는 어떤 호스트를 보는지 바로 알 수 있도록 대상 호스트명과 맞췄습니다.
-
-3) `make build_dc1`과 `make build_dc2`를 실행해 structured config와 장비 config를 생성한 뒤, `sites/dc1/intended/configs/s1-leaf1.cfg`(및 `s1-leaf2.cfg`)에 아래 블록이 추가됐는지 확인합니다.
-
-```
-monitor connectivity
-   interval 5
-   no shutdown
-   !
-   vrf A
-      !
-      host s2-host2
-         ip 10.10.10.22
-!
-```
-
-`sites/dc2/intended/configs/s2-leaf3.cfg`(및 `s2-leaf4.cfg`)에는 대칭으로 `host s1-host1`, `ip 10.10.10.11` 블록이 있어야 합니다.
-
-4) `make deploy_dc1_eapi`와 `make deploy_dc2_eapi`(또는 `make deploy_dc1_cvp`/`make deploy_dc2_cvp` + change control 승인)로 배포합니다.
-
-5) 배포 후 leaf 스위치에서 실시간 상태를 확인합니다.
-
-```
-show monitor connectivity
-show monitor connectivity host s2-host2   ! s1-leaf1/s1-leaf2에서
-show monitor connectivity host s1-host1   ! s2-leaf3/s2-leaf4에서
-```
-
-### 2단계 - 왜 여전히 Packet Loss 100%인가
-
-Lab 2·3까지 정상 배포되어 있고 사람이 직접 `ping vrf 10 10.10.10.21`(호스트 ↔ 호스트, Lab 3에서 확인한 그 핑)은 잘 되는데도, 방금 켠 `show monitor connectivity`는 계속 `100% / No response`로 나오는 걸 확인할 수 있습니다.
-
-```
-show monitor connectivity
-```
-```
-VRF: A
-Host: s2-host2
-Network statistics:
-IP Address  Local Interface Latency Jitter Packet Loss Probe Error
------------ --------------- ------- ------ ----------- -----------
-10.10.10.22 none                n/a    n/a        100% No response
-```
-
-`Local Interface` 칸이 `none`인 게 힌트입니다. `monitor connectivity`는 프로브의 소스 인터페이스/주소를 명시하지 않으면, 라우팅 테이블 기준으로 VRF `A`에서 사용 가능한 주소를 고르는데 — VRF `A`의 유일한 인터페이스인 `Vlan10`에는 `ip_address_virtual: 10.10.10.1/24`(anycast 게이트웨이)만 있습니다. 이 주소는 **`s1-leaf1`/`s1-leaf2`(같은 leaf pair) 두 대는 물론, dc1/dc2 전체 leaf가 전부 동일하게 사용**합니다(호스트 anycast gateway가 양쪽 DC에서 `10.10.10.1`로 stretch되어 있다는 걸 떠올려보세요). 그래서 프로브 응답이 "어느 장비로" 돌아와야 할지 네트워크가 결정할 수 없게 되고, 그 결과가 `100% packet loss`입니다.
-
-이 문제를 해결하려면 **① leaf마다 고유한 소스 주소를 마련**하고, **② 그 주소가 DC 경계를 넘어 라우팅되게** 만든 다음, **③ `monitor connectivity`가 실제로 그 주소를 쓰도록 지정**해야 합니다. 아래 3단계가 정확히 그 순서입니다.
-
-#### ① Loopback + `virtual_source_nat_vrfs` — leaf마다 고유한 소스 주소
-
-`sites/dc{n}/group_vars/dc{n}_fabric.yml`의 `LeafPair1`/`LeafPair2`(dc1은 `LeafPair1`, dc2는 `LeafPair2`)의 각 `nodes` 항목에 아래처럼 노드별 `structured_config`를 추가합니다. IP는 노드마다 반드시 달라야 합니다(예: `id` 값을 그대로 재사용).
+`sites/dc1/group_vars/dc1_fabric.yml`의 `LeafPair1`(`s1-leaf1`/`s1-leaf2`) 각 `nodes` 항목에 노드별 `structured_config`를 추가합니다. IP는 노드마다 고유해야 하므로 `id` 값을 그대로 재사용합니다.
 
 ```yaml
       nodes:
@@ -510,35 +446,20 @@ IP Address  Local Interface Latency Jitter Packet Loss Probe Error
           uplink_switch_interfaces: [Ethernet3, Ethernet3]
 ```
 
-`loopback_interfaces`가 실제 IP를 담을 그릇(anycast가 아닌, 이 장비만의 `/32`)을 만들고, `virtual_source_nat_vrfs`가 "VRF `A`에서 로컬 발신 트래픽이 anycast VIP를 쓰려 할 때 이 주소로 바꿔치기(source-nat)하라"고 지시합니다. `ip address virtual source-nat vrf A address 10.255.10.14`라는 CLI로 렌더링됩니다.
+`loopback_interfaces`는 이 장비만의 고유 `/32` 주소를 담을 그릇을 만들고, `virtual_source_nat_vrfs`는 "VRF `A`에서 로컬 발신 트래픽이 anycast VIP 대신 이 주소를 쓰게 하라"고 지시합니다(`ip address virtual source-nat vrf A address 10.255.10.14`로 렌더링됩니다). 두 설정은 항상 짝으로 다닙니다 — Loopback이 주소의 실체를 만들고, source-nat가 그 주소를 실제로 쓰게 만드는 역할입니다.
 
-> 둘 중 하나만 넣으면 안 됩니다. `virtual_source_nat_vrfs`만 넣고 `loopback_interfaces`를 빼면, 그 주소를 실제로 소유하는 인터페이스가 없어 VRF `A`의 로컬 발신 트래픽 전체가 깨집니다(leaf가 자기 로컬 호스트에게도 ping을 못 하게 됩니다) — 실제로 이 환경에서 재현되는 증상입니다.
+`sites/dc2/group_vars/dc2_fabric.yml`의 `LeafPair2`(`s2-leaf3`/`s2-leaf4`)에도 동일하게 적용합니다(예: `10.255.10.115`, `10.255.10.117`).
 
-dc2의 `LeafPair2`(`s2-leaf3`/`s2-leaf4`)에도 동일하게 적용합니다(예: `10.255.10.115`, `10.255.10.117`).
+### 2) `monitor_connectivity` 구성 — 전용 소스 주소를 프로브에 바인딩
 
-#### ② `evpn_gateway`의 `evpn_l3` — 이 Loopback을 DC 경계 너머로 릴레이
-
-①에서 만든 `10.255.10.x/32`는 EVPN Type-5(IP-prefix) 경로로 광고됩니다. 그런데 Lab 3에서 켠 `evpn_gateway`는 `evpn_l2`(Type-2/3, MAC-IP·IMET — VLAN 10/20 stretch에 필요한 것)만 활성화되어 있어서, Type-5는 Border Leaf를 넘어 반대쪽 DC로 릴레이되지 않습니다. `show bgp evpn route-type ip-prefix`로 확인해보면 DC1에서 만든 `10.255.10.14/32`가 DC1 내부에서만 보이고 DC2 leaf에서는 라우팅 테이블에 아예 없습니다 — 그래서 프로브가 DC2까지는 도달해도, DC2가 응답을 DC1의 `10.255.10.14`로 돌려보낼 경로를 몰라 여전히 loss가 됩니다.
-
-`sites/dc1/group_vars/dc1_fabric.yml`과 `sites/dc2/group_vars/dc2_fabric.yml`의 `BrdrLeafs` 블록에서 `evpn_gateway` 아래에 `evpn_l3`를 추가합니다.
+`LeafPair1`(dc1) 블록에 주석 처리된 `structured_config`(그룹 레벨)의 주석을 해제하고, 아래처럼 `interface_sets`와 `local_interfaces`를 포함해 작성합니다.
 
 ```yaml
-      evpn_gateway:
-        evpn_l2:
-          enabled: true
-        evpn_l3:
-          enabled: true
-        remote_peers:
-          ...
-```
-
-두 DC 모두 동일하게 추가합니다. 이제 `show bgp evpn route-type ip-prefix`(DC1) / `show ip route vrf A 10.255.10.14`(DC2)로 확인하면 `B E 10.255.10.14/32 ... via VTEP ... router-mac ...`처럼 Border Leaf VTEP을 next-hop으로 하는 경로가 반대쪽 DC에도 나타납니다.
-
-#### ③ `monitor_connectivity`가 실제로 그 주소를 쓰도록 바인딩
-
-①·②만으로는 부족합니다. `monitor connectivity` 자체가 ①에서 만든 소스를 자동으로 쓰지는 않기 때문에(직접 확인하려면 `ping vrf A 10.10.10.22 source Loopback210`은 0% loss로 성공하지만, `source`를 생략한 `ping vrf A 10.10.10.22`는 여전히 anycast VIP를 골라 실패합니다), `local-interfaces` 옵션으로 명시적으로 지정해야 합니다.
-
-```yaml
+    - group: LeafPair1
+      filter:
+        tenants: [ATD_DC, New-Tenant]
+        tags: ['DC']
+      bgp_as: 65001
       structured_config:
         monitor_connectivity:
           shutdown: false
@@ -552,9 +473,13 @@ dc2의 `LeafPair2`(`s2-leaf3`/`s2-leaf4`)에도 동일하게 적용합니다(예
                 - name: s2-host2
                   ip: 10.10.10.22
                   local_interfaces: MONITOR-DIAG
+      nodes:
+        ...
 ```
 
-> **함정**: `interface_sets`는 반드시 **`vrf A` 블록 안에 nested**로 넣어야 합니다(`monitor_connectivity` 최상위에 넣는 게 아닙니다). 최상위에 넣으면 EOS가 `host` 아래의 `local-interfaces MONITOR-DIAG` 참조를 `Invalid set MONITOR-DIAG` 에러로 거부합니다. 렌더링되는 CLI는 아래와 같아야 합니다.
+`interval: 5`는 5초마다 ICMP 프로브를 보낸다는 뜻입니다. `interface_sets`는 1)에서 만든 `Loopback210`을 `MONITOR-DIAG`라는 이름으로 묶고, `hosts[].local_interfaces: MONITOR-DIAG`가 이 프로브의 소스를 그 이름으로 지정합니다. `name: s2-host2`는 `show monitor connectivity`에 표시되는 라벨일 뿐 실제 장비 이름과 무관해도 되지만, 여기서는 알아보기 쉽도록 대상 호스트명과 맞췄습니다.
+
+> `interface_sets`는 반드시 `vrf A` 블록 **안에** 넣습니다(`monitor_connectivity` 최상위가 아닙니다) — EOS가 실제로 렌더링하는 CLI 구조가 아래와 같기 때문입니다.
 >
 > ```
 > monitor connectivity
@@ -570,19 +495,22 @@ dc2의 `LeafPair2`(`s2-leaf3`/`s2-leaf4`)에도 동일하게 적용합니다(예
 > !
 > ```
 
-dc2의 `LeafPair2`도 동일한 패턴으로 `interface_sets`(`Loopback210`)와 `hosts[].local_interfaces: MONITOR-DIAG`를 추가합니다(대상은 `s1-host1`/`10.10.10.11`).
+`sites/dc2/group_vars/dc2_fabric.yml`의 `LeafPair2`도 동일한 패턴으로 작성합니다(대상은 `s1-host1`/`10.10.10.11`, `interface_sets`는 `Loopback210` 그대로).
 
-### 3단계 - 재빌드·재배포·최종 검증
+### 3) 빌드 · 배포 · 검증
 
-1) `make build_dc1`, `make build_dc2`로 재생성하고, `sites/dc{n}/intended/configs/s{n}-leaf{1,3}.cfg`에 `interface Loopback210`, `ip address virtual source-nat vrf A address ...`, `monitor connectivity` 블록(위 CLI 그대로) 세 가지가 모두 들어갔는지 확인합니다. `sites/dc{n}/intended/configs/s{n}-brdr{1,2}.cfg`에는 `neighbor default next-hop-self received-evpn-routes route-type ip-prefix inter-domain`이 추가됐는지 확인합니다(`evpn_l3`가 렌더링한 줄입니다).
+1) `make build_dc1`, `make build_dc2`로 structured config와 장비 config를 생성합니다. `sites/dc{n}/intended/configs/s{n}-leaf{1,3}.cfg`(및 짝 leaf)에 `interface Loopback210`, `ip address virtual source-nat vrf A address ...`, 위 `monitor connectivity` 블록 세 가지가 모두 들어갔는지 확인합니다.
 
-2) `make deploy_dc1_eapi`와 `make deploy_dc2_eapi`로 배포합니다(border leaf·leaf pair 설정이 모두 바뀌므로 두 DC 다 배포해야 합니다).
+2) `make deploy_dc1_eapi`와 `make deploy_dc2_eapi`(또는 `make deploy_dc1_cvp`/`make deploy_dc2_cvp` + change control 승인)로 배포합니다 — 두 DC의 leaf pair 설정이 모두 바뀌므로 두 DC 다 배포합니다.
 
-3) 최종 확인합니다.
+3) leaf 스위치에서 상태를 확인합니다.
 
 ```
 show monitor connectivity
+show monitor connectivity host s2-host2   ! s1-leaf1/s1-leaf2에서
+show monitor connectivity host s1-host1   ! s2-leaf3/s2-leaf4에서
 ```
+
 ```
 VRF: A
 Host: s2-host2
@@ -592,8 +520,6 @@ IP Address  Local Interface   Latency   Jitter Packet Loss Probe Error
 10.10.10.22 Loopback210     13.979 ms 0.612 ms          0% n/a
 ```
 
-`Local Interface`가 `Loopback210`으로, `Packet Loss`가 `0%`로 나오면 성공입니다. `s2-leaf3`/`s2-leaf4`에서 `show monitor connectivity host s1-host1`도 동일하게 `0%`가 나와야 합니다.
+`Local Interface`가 `Loopback210`, `Packet Loss`가 `0%`로 나오면 성공입니다. `s2-leaf3`/`s2-leaf4`에서 `show monitor connectivity host s1-host1`도 동일하게 `0%`가 나와야 합니다.
 
-Border Leaf가 아직 없거나(Lab 2 미완료) `evpn_l3`가 빠진 상태라면 여전히 loss가 나는 것이 정상입니다 — "모니터링이 실제로 장애를 감지한다"는 걸 보여주는 예시이기도 합니다.
-
-4) (선택) 필요하면 `hosts` 목록에 VLAN 20/100/200 IP도 같은 방식으로 추가해 다른 VRF까지 모니터링을 확장할 수 있습니다. 다만 VLAN 100/200은 fabric 쪽 VRF 이름이 `A`가 아니라 `100`/`200`(Lab 4에서 만든 tenant `New-Tenant`)이므로, `vrfs` 리스트에 `name: "100"`, `name: "200"` 항목을 각각 추가하고, ①·②·③의 Loopback/source-nat/interface_sets도 VRF별로 반복해야 합니다.
+4) (선택) 필요하면 `hosts` 목록에 VLAN 20/100/200 IP도 같은 방식으로 추가해 다른 VRF까지 모니터링을 확장할 수 있습니다. 다만 VLAN 100/200은 fabric 쪽 VRF 이름이 `A`가 아니라 `100`/`200`(Lab 4에서 만든 tenant `New-Tenant`)이므로, `vrfs` 리스트에 `name: "100"`, `name: "200"` 항목을 각각 추가하고, 1)·2)의 Loopback/source-nat/interface_sets도 VRF별로 반복해야 합니다.
