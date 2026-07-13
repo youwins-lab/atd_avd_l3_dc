@@ -16,6 +16,8 @@
 |---global_vars
     |---global_dc_vars.yml
 |---lab guide
+    |---claude-code-guide.md
+    |---codex-cli-guide.md
     |---evpn-vxlan-labs.md
     |---multi-domain-evpn-vxlan-guide.md
 |---playbooks
@@ -137,15 +139,16 @@ sites/dc2/group_vars/dc2.yml
 
 이 AVD 토폴로지에는 EVPN VXLAN 패브릭에서 AVD를 이용한 Day 2 운영을 보여주는 작업들로 구성된 두 개의 랩이 포함되어 있습니다. 이 랩들은 **lab guide** 디렉토리의 `evpn-vxlan-labs.md` 파일에 있습니다. IDE 안에서 해당 랩 파일을 마우스 우클릭한 뒤 **Open Preview**를 클릭하면 읽기 좋은 MarkDown 형식으로 볼 수 있습니다. github에서 직접 볼 수도 있습니다.
 
-이 토폴로지가 왜/어떻게 두 데이터센터를 하나의 EVPN/VXLAN 도메인처럼 보이게 만드는지(EVPN Gateway, DCI, 실제 IP 주소 체계 등)를 개념부터 이해하고 싶다면 **lab guide** 디렉토리의 `multi-domain-evpn-vxlan-guide.md`를 참고하세요.
-
 패브릭의 초기 배포와 이후 모든 변경 사항의 배포는 알맞은 site inventory 파일을 대상으로 해당 ansible 플레이북을 실행하는 방식으로 이루어집니다. 이 과정을 쉽게 하기 위해, 포함된 Makefile을 통해 축약된 `make command`로 올바른 ansible 플레이북을 올바른 inventory 파일에 대해 실행할 수 있는 alias 명령어들을 제공합니다.
 
 아래는 사용 가능한 모든 make 명령어와 각각의 목적, 그리고 어떤 ansible 플레이북과 inventory 파일을 사용하는지에 대한 설명입니다.
 
 <br>
 
-**명령어:**  `make deploy_dc1_dci_cvp`
+- **명령어:**  `make deploy_dc1_dci_cvp`
+
+**설명:** s1-core1, s1-core2 장비 대상으로 정적인 설정을 배포합니다.
+배포방법은 `sites/dc1/dci_configs`에서 Ansible vars에서 태그를 직접 읽어들인 뒤 `arista.avd.cv_deploy` 롤을 통해 CVP에 configlet 형태로 업로드하고 별도의 사용자 개입 없이 CVP가 자동으로 change control을 생성합니다.
 
 ```bash
 deploy_dc1_dci_cvp: ## Deploy DC1 DCI configs to non-avd devices through CVP
@@ -155,13 +158,12 @@ deploy_dc1_dci_cvp: ## Deploy DC1 DCI configs to non-avd devices through CVP
 
 **Inventory 파일:**  `dc1/inventory.yml`
 
-**설명:** s1-core1, s1-core2 장비 대상으로 정적인 설정을 배포합니다.
-배포방법은 `sites/dc1/dci_configs`에서 Ansible vars에서 태그를 직접 읽어들인 뒤 `arista.avd.cv_deploy` 롤을 통해 CVP에 configlet 형태로 업로드하고 별도의 사용자 개입 없이 CVP가 자동으로 change control을 생성합니다.
-
-<br>
 <br>
 
-**명령어:**  `make deploy_dc2_dci_cvp`
+- **명령어:**  `make deploy_dc2_dci_cvp`
+
+**설명:** s2-core1, s2-core2 장비 대상으로 정적인 설정을 배포합니다.
+배포방법은 `sites/dc2/dci_configs`에서 Ansible vars에서 태그를 직접 읽어들인 뒤 `arista.avd.cv_deploy` 롤을 통해 CVP에 configlet 형태로 업로드하고 별도의 사용자 개입 없이 CVP가 자동으로 change control을 생성합니다.
 
 ```bash
 deploy_dc2_dci_cvp: ## Deploy DC2 DCI configs to non-avd devices through CVP
@@ -171,13 +173,11 @@ deploy_dc2_dci_cvp: ## Deploy DC2 DCI configs to non-avd devices through CVP
 
 **Inventory 파일:**  `dc2/inventory.yml`
 
-**설명:** s2-core1, s2-core2 장비 대상으로 정적인 설정을 배포합니다.
-배포방법은 `sites/dc2/dci_configs`에서 Ansible vars에서 태그를 직접 읽어들인 뒤 `arista.avd.cv_deploy` 롤을 통해 CVP에 configlet 형태로 업로드하고 별도의 사용자 개입 없이 CVP가 자동으로 change control을 생성합니다.
-
-<br>
 <br>
 
-**명령어:**  `make build_dc1`
+- **명령어:**  `make build_dc1`
+
+**설명:** 이 명령어는 AVD를 호출하여 데이터센터1의 모든 장비에 대한 설정을 빌드합니다. 이 플레이북은 global_vars 파일의 변수들과, site/dc1의 group_vars 디렉토리에 있는 다양한 yml 파일에 정의된 모든 내용을 읽어들입니다. 그런 다음 `site1` 디렉토리 아래에 `intended/configs`, `intended/structured_configs`, `documentation` 디렉토리를 생성합니다. 마지막으로 모든 장비의 설정, structured config, 마크다운 문서 파일을 생성합니다.
 
 ```bash
 build_dc1: ## Build AVD Configs for DC1
@@ -187,12 +187,11 @@ build_dc1: ## Build AVD Configs for DC1
 
 **Inventory 파일:**  `dc1/inventory.yml`
 
-**설명:** 이 명령어는 AVD를 호출하여 데이터센터1의 모든 장비에 대한 설정을 빌드합니다. 이 플레이북은 global_vars 파일의 변수들과, site/dc1의 group_vars 디렉토리에 있는 다양한 yml 파일에 정의된 모든 내용을 읽어들입니다. 그런 다음 `site1` 디렉토리 아래에 `intended/configs`, `intended/structured_configs`, `documentation` 디렉토리를 생성합니다. 마지막으로 모든 장비의 설정, structured config, 마크다운 문서 파일을 생성합니다.
-
-<br>
 <br>
 
-**명령어:**  `make build_dc2`
+- **명령어:**  `make build_dc2`
+
+**설명:** 이 명령어는 AVD를 호출하여 데이터센터2의 모든 장비에 대한 설정을 빌드합니다. 이 플레이북은 global_vars 파일의 변수들과, site/dc2의 group_vars 디렉토리에 있는 다양한 yml 파일에 정의된 모든 내용을 읽어들입니다. 그런 다음 `site2` 디렉토리 아래에 `intended/configs`, `intended/structured_configs`, `documentation` 디렉토리를 생성합니다. 마지막으로 모든 장비의 설정, structured config, 마크다운 문서 파일을 생성합니다.
 
 ```bash
 build_dc2: ## Build AVD Configs for DC2
@@ -202,12 +201,13 @@ build_dc2: ## Build AVD Configs for DC2
 
 **Inventory 파일:**  `dc2/inventory.yml`
 
-**설명:** 이 명령어는 AVD를 호출하여 데이터센터2의 모든 장비에 대한 설정을 빌드합니다. 이 플레이북은 global_vars 파일의 변수들과, site/dc2의 group_vars 디렉토리에 있는 다양한 yml 파일에 정의된 모든 내용을 읽어들입니다. 그런 다음 `site2` 디렉토리 아래에 `intended/configs`, `intended/structured_configs`, `documentation` 디렉토리를 생성합니다. 마지막으로 모든 장비의 설정, structured config, 마크다운 문서 파일을 생성합니다.
 
 <br>
-<br>
 
-**명령어:**  `make deploy_dc1_cvp`
+- **명령어:**  `make deploy_dc1_cvp`
+
+**설명:** 이 명령어는 AVD를 호출하여 생성된 설정을 배포하고, 필요한 경우 CVP의 컨테이너 구조를 변경합니다. 이 플레이북은 deploy_cvp 롤을 호출하여 필요 시 CVP 컨테이너 구조를 수정하고, 생성된 설정을 CVP에 configlet 형태로 업로드한 뒤, 데이터센터1의 관련 장비에 해당 configlet을 배포합니다. 이 플레이북에는 `execute_tasks: false` 플래그가 있어, CVP에서 작업(task)에 대한 change control을 자동으로 생성하고 사용자 설정을 직접 확인하고 배포합니다. 
+만약 `execute_tasks: true`로 변경하면 사용자 개입없이 설정이 자동 배포됩니다.
 
 ```bash
 deploy_dc1_cvp: ## Deploy DC1 AVD Configs Through CVP
@@ -217,13 +217,12 @@ deploy_dc1_cvp: ## Deploy DC1 AVD Configs Through CVP
 
 **Inventory 파일:**  `dc1/inventory.yml`
 
-**설명:** 이 명령어는 AVD를 호출하여 생성된 설정을 배포하고, 필요한 경우 CVP의 컨테이너 구조를 변경합니다. 이 플레이북은 deploy_cvp 롤을 호출하여 필요 시 CVP 컨테이너 구조를 수정하고, 생성된 설정을 CVP에 configlet 형태로 업로드한 뒤, 데이터센터1의 관련 장비에 해당 configlet을 배포합니다. 이 플레이북에는 `execute_tasks: false` 플래그가 있어, CVP에서 작업(task)에 대한 change control을 자동으로 생성하고 사용자 설정을 직접 확인하고 배포합니다. 
+<br>
+
+- **명령어:**  `make deploy_dc2_cvp`
+
+**설명:** 이 명령어는 AVD를 호출하여 생성된 설정을 배포하고, 필요한 경우 CVP의 컨테이너 구조를 변경합니다. 이 플레이북은 deploy_cvp 롤을 호출하여 필요 시 CVP 컨테이너 구조를 수정하고, 생성된 설정을 CVP에 configlet 형태로 업로드한 뒤, 데이터센터2의 관련 장비에 해당 configlet을 배포합니다. 이 플레이북에는 `execute_tasks: false` 플래그가 있어, CVP에서 작업(task)에 대한 change control을 자동으로 생성하고 사용자 설정을 직접 확인하고 배포합니다.
 만약 `execute_tasks: true`로 변경하면 사용자 개입없이 설정이 자동 배포됩니다.
-
-<br>
-<br>
-
-**명령어:**  `make deploy_dc2_cvp`
 
 ```bash
 deploy_dc1_cvp: ## Deploy DC2 AVD Configs Through CVP
@@ -233,13 +232,11 @@ deploy_dc1_cvp: ## Deploy DC2 AVD Configs Through CVP
 
 **Inventory 파일:**  `dc2/inventory.yml`
 
-**설명:** 이 명령어는 AVD를 호출하여 생성된 설정을 배포하고, 필요한 경우 CVP의 컨테이너 구조를 변경합니다. 이 플레이북은 deploy_cvp 롤을 호출하여 필요 시 CVP 컨테이너 구조를 수정하고, 생성된 설정을 CVP에 configlet 형태로 업로드한 뒤, 데이터센터2의 관련 장비에 해당 configlet을 배포합니다. 이 플레이북에는 `execute_tasks: false` 플래그가 있어, CVP에서 작업(task)에 대한 change control을 자동으로 생성하고 사용자 설정을 직접 확인하고 배포합니다.
-만약 `execute_tasks: true`로 변경하면 사용자 개입없이 설정이 자동 배포됩니다.
-
-<br>
 <br>
 
-**명령어:**  `make deploy_dc1_host_cvp`
+- **명령어:**  `make deploy_dc1_host_cvp`
+
+**설명:** s1-host1, s1-host2의 정적 설정을 배포합니다. DCI 장비와 마찬가지로 이 장비들도 eos_designs/eos_cli_config_gen으로 빌드되지 않으며, 정적 설정은 `sites/dc1/host_configs`에 있고 `arista.avd.cv_deploy` 롤을 통해 CVP에 configlet으로 업로드됩니다.
 
 ```bash
 deploy_dc1_host_cvp: ## Deploy DC1 s1-host1/host2 configs to non-avd devices through CVP
@@ -249,12 +246,11 @@ deploy_dc1_host_cvp: ## Deploy DC1 s1-host1/host2 configs to non-avd devices thr
 
 **Inventory 파일:**  `dc1/inventory.yml`
 
-**설명:** s1-host1, s1-host2의 정적 설정을 배포합니다. DCI 장비와 마찬가지로 이 장비들도 eos_designs/eos_cli_config_gen으로 빌드되지 않으며, 정적 설정은 `sites/dc1/host_configs`에 있고 `arista.avd.cv_deploy` 롤을 통해 CVP에 configlet으로 업로드됩니다.
-
-<br>
 <br>
 
-**명령어:**  `make deploy_dc2_host_cvp`
+- **명령어:**  `make deploy_dc2_host_cvp`
+
+**설명:** `make deploy_dc1_host_cvp`의 DC2 버전으로, 동일한 `arista.avd.cv_deploy` 방식을 통해 `sites/dc2/host_configs`에 있는 s2-host1, s2-host2 정적 설정을 배포합니다.
 
 ```bash
 deploy_dc2_host_cvp: ## Deploy DC2 s2-host1/host2 configs to non-avd devices through CVP
@@ -264,9 +260,6 @@ deploy_dc2_host_cvp: ## Deploy DC2 s2-host1/host2 configs to non-avd devices thr
 
 **Inventory 파일:**  `dc2/inventory.yml`
 
-**설명:** `make deploy_dc1_host_cvp`의 DC2 버전으로, 동일한 `arista.avd.cv_deploy` 방식을 통해 `sites/dc2/host_configs`에 있는 s2-host1, s2-host2 정적 설정을 배포합니다.
-
-<br>
 <br>
 
 ### 초기 설정 빌드 및 배포
@@ -289,8 +282,10 @@ AVD를 이용해 초기 패브릭을 빌드하기 위해 아래 순서대로 mak
 <br>
 <br>
 
+### CVP 없는 환경에서 eAPI를 이용한 스위치 설정 배포
+- **명령어:**  `make deploy_dc1_eapi`
 
-**명령어:**  `make deploy_dc1_eapi`
+**설명:** 이 명령어는 eos_config 모듈을 호출하여 CVP를 거치지 않고 장비의 eAPI를 직접 사용해 데이터센터1의 해당 장비에만 생성된 설정을 배포합니다. 이 플레이북은 CVP 없이 자동화와 AVD를 사용해 설정을 관리하는 또 다른 방법을 보여줍니다.
 
 ```bash
 deploy_dc1_eapi: ## Deploy DC1 Spine/Leaf AVD generated configs via eAPI
@@ -300,12 +295,12 @@ deploy_dc1_eapi: ## Deploy DC1 Spine/Leaf AVD generated configs via eAPI
 
 **Inventory 파일:**  `dc1/inventory.yml`
 
-**설명:** 이 명령어는 eos_config 모듈을 호출하여 CVP를 거치지 않고 장비의 eAPI를 직접 사용해 데이터센터1의 해당 장비에만 생성된 설정을 배포합니다. 이 플레이북은 CVP 없이 자동화와 AVD를 사용해 설정을 관리하는 또 다른 방법을 보여줍니다.
-
 <br>
 <br>
 
-**명령어:**  `make deploy_dc2_eapi`
+- **명령어:**  `make deploy_dc2_eapi`
+
+**설명:** 이 명령어는 eos_config 모듈을 호출하여 CVP를 거치지 않고 장비의 eAPI를 직접 사용해 데이터센터2의 해당 장비에만 생성된 설정을 배포합니다. 이 플레이북은 CVP 없이 자동화와 AVD를 사용해 설정을 관리하는 또 다른 방법을 보여줍니다.
 
 ```bash
 deploy_dc1_eapi: ## Deploy DC2 Spine/Leaf AVD generated configs via eAPI
@@ -314,8 +309,6 @@ deploy_dc1_eapi: ## Deploy DC2 Spine/Leaf AVD generated configs via eAPI
 **호출되는 플레이북:**  `deploy_dc2_eapi.yml`
 
 **Inventory 파일:**  `dc2/inventory.yml`
-
-**설명:** 이 명령어는 eos_config 모듈을 호출하여 CVP를 거치지 않고 장비의 eAPI를 직접 사용해 데이터센터2의 해당 장비에만 생성된 설정을 배포합니다. 이 플레이북은 CVP 없이 자동화와 AVD를 사용해 설정을 관리하는 또 다른 방법을 보여줍니다.
 
 <br>
 <br>
