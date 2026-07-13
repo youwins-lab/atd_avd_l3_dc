@@ -12,4 +12,4 @@
         cv_username: "{{ ansible_user }}"
         cv_password: "{{ ansible_password }}"
         cv_verify_certs: false
-        cv_run_change_control: false
+        cv_run_change_control: true

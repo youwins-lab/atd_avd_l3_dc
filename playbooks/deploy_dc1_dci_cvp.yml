@@ -12,7 +12,7 @@
         cv_username: "{{ ansible_user }}"
         cv_password: "{{ ansible_password }}"
         cv_verify_certs: false
-        cv_run_change_control: true
+        cv_run_change_control: false
         # These devices are not built by eos_designs/eos_cli_config_gen, so read
         # per-device variables (tags, etc.) from Ansible vars instead of structured config files.
         read_structured_config_from_file: false
