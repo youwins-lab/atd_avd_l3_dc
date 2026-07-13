@@ -2,9 +2,9 @@
 
 이 문서는 이 저장소가 구현하고 있는 **Multi-Domain EVPN/VXLAN**(독립된 두 데이터센터 패브릭을 EVPN Gateway로 연동하는 설계)을 개념부터 실제 설정, 실제 IP 주소까지 한 번에 이해할 수 있도록 정리한 학습 자료입니다. `README.md`의 설치·배포 가이드와는 별개이며, 실습 과제는 `lab guide/evpn-vxlan-labs.md`에 따로 있습니다.
 
-> **참고**: 이 문서는 Lab 3까지 완료한 **완성된 토폴로지**를 기준으로 설명합니다. 저장소를 처음 clone한 시점에는 dc1/dc2 모두 `LeafPair1`/`LeafPair2`(4-leaf)까지는 정상 빌드되지만, Border Leaf(`s{n}-brdr1`/`s{n}-brdr2`)와 DCI core 라우터로 향하는 `core_interfaces`가 `sites/dc{n}/inventory.yml`/`dc{n}_fabric.yml`에 주석 처리되어 있어 dc1과 dc2가 완전히 **독립된 단일 데이터센터 EVPN/VXLAN 패브릭**으로만 동작합니다. Border Leaf 자체는 `lab guide/evpn-vxlan-labs.md`의 **Lab 2**에서 fabric에 추가되지만, 이 문서 §6에서 설명하는 `evpn_gateway`(원격 도메인 재발신) 서브 블록은 Lab 2에서도 계속 주석 상태로 남아 있습니다 — 그래서 Lab 2만 끝낸 시점에는 두 Border Leaf가 서로의 DCI 언더레이는 연결되어 있어도 EVPN 오버레이는 아직 스티칭되지 않은 상태(`s1-host1 → s2-host1` ping이 실패하는 상태)입니다. `evpn_gateway`를 켜서 아래 설명대로 EVPN Gateway를 통한 multi-domain 스트레치를 실제로 동작시키는 것이 **Lab 3**입니다. Lab 4(새 tenant `New-Tenant`, VLAN 100/200 추가)는 이 문서의 범위 밖입니다.
+> **참고**: 이 문서는 Lab 3까지 완료한 **완성된 토폴로지**를 기준으로 설명합니다. 저장소를 처음 clone한 시점에는 dc1/dc2 모두 `LeafPair1`/`LeafPair2`(4-leaf)까지는 정상 빌드되지만, Border Leaf(`s{n}-brdr1`/`s{n}-brdr2`)와 DCI core 라우터로 향하는 `core_interfaces`가 `sites/dc{n}/inventory.yml`/`dc{n}_fabric.yml`에 주석 처리되어 있어 dc1과 dc2가 완전히 **독립된 단일 데이터센터 EVPN/VXLAN 패브릭**으로만 동작합니다. Border Leaf 자체는 `lab guide/evpn-vxlan-labs.md`의 **Lab 2**에서 fabric에 추가되지만, 이 문서 §5에서 설명하는 `evpn_gateway`(원격 도메인 재발신) 서브 블록은 Lab 2에서도 계속 주석 상태로 남아 있습니다 — 그래서 Lab 2만 끝낸 시점에는 두 Border Leaf가 서로의 DCI 언더레이는 연결되어 있어도 EVPN 오버레이는 아직 스티칭되지 않은 상태(`s1-host1 → s2-host1` ping이 실패하는 상태)입니다. `evpn_gateway`를 켜서 아래 설명대로 EVPN Gateway를 통한 multi-domain 스트레치를 실제로 동작시키는 것이 **Lab 3**입니다. Lab 4(새 tenant `New-Tenant`, VLAN 100/200 추가)는 이 문서의 범위 밖입니다.
 >
-> `lab guide/evpn-vxlan-labs.md`의 **Lab 3**은 `evpn_gateway` 활성화에 이어 이 문서 §6·§9·§10에서 설명한 내용(EVPN Gateway 피어링, 도메인 재발신, 패킷 여정, ANTA 검증)을 실제 명령어로 직접 확인하는 실습입니다 — 이 문서를 읽었다면 Lab 3에서 그 내용을 손으로 검증해 보세요.
+> `lab guide/evpn-vxlan-labs.md`의 **Lab 3**은 `evpn_gateway` 활성화에 이어 이 문서 §5·§8·§9에서 설명한 내용(EVPN Gateway 피어링, 도메인 재발신, 패킷 여정, ANTA 검증)을 실제 명령어로 직접 확인하는 실습입니다 — 이 문서를 읽었다면 Lab 3에서 그 내용을 손으로 검증해 보세요.
 
 <br>
 
@@ -16,95 +16,12 @@ EVPN/VXLAN 패브릭을 여러 데이터센터로 확장하는 방법은 크게 
 - **Multi-Domain(Multi-Fabric) 설계** — 이 저장소가 택한 방식입니다. DC1과 DC2를 **완전히 독립된 EVPN/VXLAN 도메인**으로 구성합니다. 각 도메인은 자신만의 언더레이 BGP AS 대역과 Route-Distinguisher/Loopback 대역을 가지며, 서로 상대방의 spine/leaf를 전혀 알지 못합니다. 두 도메인은 **Border Leaf(`s1-brdr*`, `s2-brdr*`)에 구성된 EVPN Gateway**를 통해서만 연동됩니다. 이 방식은 다음과 같은 장점이 있습니다.
   - **장애 격리**: DC1 언더레이가 재수렴(reconverge)해도 DC2 컨트롤 플레인에는 영향이 없습니다.
   - **루프 방지 경계**: Border Leaf가 EVPN 경로를 도메인 간에 **재생성(re-origination)**하면서 `domain_remote` 표시를 남기므로, DC2에서 배운 경로가 다시 DC2로 되돌아가는 루프가 원천적으로 차단됩니다.
-  - **독립적인 주소/VNI 설계**: 두 도메인이 반드시 같은 VLAN ID나 VNI를 쓸 필요가 없습니다. 이 랩에서는 학습 편의상 두 DC가 동일한 VLAN 10/20, 동일한 서브넷을 쓰도록 맞춰 놓았을 뿐입니다(§7 참고).
+  - **독립적인 주소/VNI 설계**: 두 도메인이 반드시 같은 VLAN ID나 VNI를 쓸 필요가 없습니다. 이 랩에서는 학습 편의상 두 DC가 동일한 VLAN 10/20, 동일한 서브넷을 쓰도록 맞춰 놓았을 뿐입니다(§6 참고).
   - **DCI 구간은 오버레이가 아닌 순수 IP 트랜짓**: `s1-core*`/`s2-core*`는 VXLAN을 전혀 모르는 일반 IP 라우터로, Border Leaf의 Loopback을 서로 도달 가능하게 해주는 역할만 합니다.
 
 <br>
 
-## 2. 전체 토폴로지 (IP 포함)
-
-> 아래 다이어그램은 텍스트(ASCII)로만 그려서 VS Code 기본 미리보기, GitHub, 터미널 어디서든 별도 확장 없이 동일하게 보입니다. 정확한 IP는 다이어그램이 아니라 §3~§8의 표를 기준으로 확인하세요.
-
-**전체 흐름 요약**
-
-```
-[s1-host1/2] == s1-leaf1~4 == s1-spine1/2 == s1-brdr1/2  <== EVPN Gateway ==>  s2-brdr1/2 == s2-spine1/2 == s2-leaf1~4 == [s2-host1/2]
-                 DC1 도메인 (AS 65000번대)                 |                    |                 DC2 도메인 (AS 65100번대)
-                                                            v                    v
-                                                     s1-core1/2 == DCI WAN ==> s2-core1/2
-                                                       (AS 65501)                (AS 65502)
-                                                     순수 IP 언더레이 구간 — VXLAN/EVPN을 전혀 인지하지 않음
-```
-
-**DC1 내부 구조** (언더레이 AS 65000)
-
-```
-                s1-spine1                                s1-spine2
-             AS65000  Lo0 10.1.0.10               AS65000  Lo0 10.1.0.12
-                    \                                     /
-                     \___  P2P 언더레이 10.255.0.0/22  ___/
-                      |  (스파인 2대 - leaf/brdr 6대, 풀메시)  |
-        +--------------+--------------+--------------+--------------+--------------+
-        |              |              |              |              |              |
-   s1-leaf1        s1-leaf2       s1-leaf3       s1-leaf4       s1-brdr1       s1-brdr2
-   AS65001         AS65001        AS65002        AS65002        AS65099        AS65099
-   Lo0 .14         Lo0 .16        Lo0 .15        Lo0 .17        Lo0 .2         Lo0 .4
-   Lo1 .14 <--MLAG--> Lo1 .14     Lo1 .15 <--MLAG--> Lo1 .15    Lo1 .2 <--MLAG--> Lo1 .2
-   (LeafPair1, 192.0.0.26/.27)    (LeafPair2, 192.0.0.28/.29)   (BrdrLeafs, 192.0.0.2/.3, EVPN GW)
-        |              |              |              |              |
-    Po1 trunk      Po1 trunk      Po1 trunk      Po1 trunk       172.16.255.0~.7/31
-    10,20 (LACP)   10,20 (LACP)   10,20 (LACP)   10,20 (LACP)    -> DCI 백본 (아래 참고)
-        |              |              |              |
-     s1-host1 -------- +           s1-host2 -------- +
-   10.10.10.11/10.20.20.11       10.10.10.12/10.20.20.12
-```
-
-**DCI 백본** (VXLAN을 모르는 순수 IP 트랜짓 — core1 레인 / core2 레인)
-
-```
-        core1 레인                                    core2 레인
-        ----------                                    ----------
-        s1-core1  AS65501                             s1-core2  AS65501
-        172.16.255.1  <- s1-brdr1                      172.16.255.3  <- s1-brdr1
-        172.16.255.5  <- s1-brdr2                       172.16.255.7  <- s1-brdr2
-             |  <---- iBGP PO16 172.17.0.0/31 (DC1 core1<->core2) ---->  |
-             |                                                          |
-             |  DCI WAN 1.1.1.0/31                DCI WAN 2.2.2.0/31    |
-             v                                                          v
-        s2-core1  AS65502                             s2-core2  AS65502
-        172.16.255.129 <- s2-brdr1                     172.16.255.131 <- s2-brdr1
-        172.16.255.133 <- s2-brdr2                      172.16.255.135 <- s2-brdr2
-             |  <---- iBGP PO16 172.17.10.0/31 (DC2 core1<->core2) ---->  |
-```
-
-**DC2 내부 구조** (언더레이 AS 65100) — DCI 백본과 만나는 Border Leaf를 위쪽에 배치
-
-```
-   s2-core1/2 (위 DCI 백본) -> 172.16.255.128~.135/31
-        |              |              |              |              |
-   s2-brdr1       s2-brdr2       s2-leaf1       s2-leaf2       s2-leaf3       s2-leaf4
-   AS65199        AS65199        AS65101        AS65101        AS65102        AS65102
-   Lo0 .102       Lo0 .104       Lo0 .114       Lo0 .116       Lo0 .115       Lo0 .117
-   Lo1 .102 <--MLAG--> Lo1 .102  Lo1 .114 <--MLAG--> Lo1 .114  Lo1 .115 <--MLAG--> Lo1 .115
-   (BrdrLeafs, 192.0.0.202/.203, EVPN GW)  (LeafPair1, 192.0.0.226/.227)  (LeafPair2, 192.0.0.228/.229)
-        |                              |              |              |              |
-        |                          Po1 trunk      Po1 trunk      Po1 trunk      Po1 trunk
-        |                          10,20 (LACP)   10,20 (LACP)   10,20 (LACP)   10,20 (LACP)
-        |                              |              |              |              |
-        |                           s2-host1 -------- +           s2-host2 -------- +
-        |                         10.10.10.21/10.20.20.21        10.10.10.22/10.20.20.22
-        |
-        |___  P2P 언더레이 10.255.1.0/22 (스파인 2대 - leaf/brdr 6대, 풀메시)  ___
-                     \                                     /
-             s2-spine1                                s2-spine2
-          AS65100  Lo0 10.1.0.110                  AS65100  Lo0 10.1.0.112
-```
-
-**범례**: 실선/`+`/`|` = 물리 링크(P2P 언더레이 eBGP), `<--MLAG-->` = MLAG 피어 링크, `<---- iBGP ---->` = 코어 내부 iBGP(PO16), `== DCI WAN ==>` = 코어 간 DCI WAN 링크입니다. Border Leaf(`s1-brdr*`, `s2-brdr*`)와 반대편 Border Leaf 사이의 **EVPN Gateway eBGP EVPN 세션**(§6)은 물리 링크가 아니라 Loopback0끼리 DCI 백본을 거쳐 논리적으로 맺어지는 세션이라 이 그림에는 표시하지 않았습니다.
-
-<br>
-
-## 3. 도메인별 언더레이/오버레이 설계
+## 2. 도메인별 언더레이/오버레이 설계
 
 두 도메인은 `sites/dc1/group_vars/dc1_fabric.yml`과 `sites/dc2/group_vars/dc2_fabric.yml`에 거의 대칭적인 구조로 정의되어 있지만, **AS 대역만큼은 서로 다르게** 잡혀 있습니다.
 
@@ -122,15 +39,15 @@ EVPN/VXLAN 패브릭을 여러 데이터센터로 확장하는 방법은 크게 
 | MLAG L3(언더레이) 대역 | `192.1.1.0/24` (`dc1_fabric.yml:63`) | `192.1.1.0/24` (`dc2_fabric.yml:60`) |
 | MLAG iBGP(VRF A) 대역 | `192.2.2.0/23` (`dc1_fabric_services.yml:11`) | `192.2.2.0/23` (`dc2_fabric_services.yml:11`) |
 
-> Loopback/MLAG 대역 값 자체는 두 파일에 동일하게 적혀 있지만(`10.1.0.0/24` 등), 각 도메인의 스위치는 서로 다른 `id:`(예: DC1 leaf는 14~17, DC2 leaf는 114~117)를 쓰므로 AVD가 풀에서 실제로 배정하는 IP는 겹치지 않습니다. 아래 §4의 실제 배정 결과를 보면 확인할 수 있습니다.
+> Loopback/MLAG 대역 값 자체는 두 파일에 동일하게 적혀 있지만(`10.1.0.0/24` 등), 각 도메인의 스위치는 서로 다른 `id:`(예: DC1 leaf는 14~17, DC2 leaf는 114~117)를 쓰므로 AVD가 풀에서 실제로 배정하는 IP는 겹치지 않습니다. 아래 §3의 실제 배정 결과를 보면 확인할 수 있습니다.
 
 각 스위치의 `id:` 값(`dc1_fabric.yml:44,47,107,124,151,155,169,173` / `dc2_fabric.yml:41,44,104,121,148,152,166,170`)이 Loopback/MLAG 풀에서 실제 옥텟을 결정하는 키입니다. spine의 `uplink_switch_interfaces:`는 leaf/brdr 쪽에서 spine으로 향하는 물리 포트를 지정합니다.
 
 <br>
 
-## 4. 노드별 실제 주소 (빌드 결과)
+## 3. 노드별 실제 주소 (빌드 결과)
 
-`make build_dc1` / `make build_dc2`가 실행하는 `arista.avd.eos_designs` + `arista.avd.eos_cli_config_gen`이 §3의 풀/정책을 기반으로 실제 배정한 주소입니다(`sites/dc{n}/intended/structured_configs/*.yml` 기준).
+`make build_dc1` / `make build_dc2`가 실행하는 `arista.avd.eos_designs` + `arista.avd.eos_cli_config_gen`이 §2의 풀/정책을 기반으로 실제 배정한 주소입니다(`sites/dc{n}/intended/structured_configs/*.yml` 기준).
 
 ### DC1
 
@@ -162,7 +79,7 @@ EVPN/VXLAN 패브릭을 여러 데이터센터로 확장하는 방법은 크게 
 
 <br>
 
-## 5. DCI 백본 — 순수 IP 트랜짓 구간
+## 4. DCI 백본 — 순수 IP 트랜짓 구간
 
 `s1-core1/2`, `s2-core1/2`는 `eos_designs`/`eos_cli_config_gen`으로 빌드되지 않는 **비-AVD 장비**입니다. 정적 설정은 `sites/dc{n}/dci_configs/*.cfg`에 있고, `make deploy_dc{n}_dci*`로 배포합니다. Border Leaf 쪽 P2P 링크 정의는 `dc1_fabric.yml:180-207` / `dc2_fabric.yml:177-204`의 `core_interfaces.p2p_links`에 있으며, `include_in_underlay_protocol: false`로 설정되어 있어 **이 링크들은 AVD 언더레이 라우팅 프로토콜에 자동으로 포함되지 않습니다.** core 장비는 별도의 정적 BGP 설정으로 직접 관리합니다.
 
@@ -181,11 +98,11 @@ EVPN/VXLAN 패브릭을 여러 데이터센터로 확장하는 방법은 크게 
 | s2-brdr2 ↔ s2-core1 | `172.16.255.132/31` | 65199 ↔ 65502 |
 | s2-brdr2 ↔ s2-core2 | `172.16.255.134/31` | 65199 ↔ 65502 |
 
-core 장비는 IPv4 유니캐스트(`address-family ipv4`)만 활성화하고 VXLAN/EVPN은 전혀 설정하지 않습니다. 이들이 실제로 라우팅하는 대상은 Border Leaf의 Loopback0/Loopback1뿐이며, 역할은 **DC1의 Border Leaf가 DC2의 Border Leaf Loopback에 IP 레벨로 도달할 수 있게 해주는 것**이 전부입니다. VXLAN 캡슐화와 EVPN 경로 교환은 이 IP 도달성 위에서 Border Leaf끼리 직접 처리합니다(§6).
+core 장비는 IPv4 유니캐스트(`address-family ipv4`)만 활성화하고 VXLAN/EVPN은 전혀 설정하지 않습니다. 이들이 실제로 라우팅하는 대상은 Border Leaf의 Loopback0/Loopback1뿐이며, 역할은 **DC1의 Border Leaf가 DC2의 Border Leaf Loopback에 IP 레벨로 도달할 수 있게 해주는 것**이 전부입니다. VXLAN 캡슐화와 EVPN 경로 교환은 이 IP 도달성 위에서 Border Leaf끼리 직접 처리합니다(§5).
 
 <br>
 
-## 6. 도메인 간 연동 — EVPN Gateway
+## 5. 도메인 간 연동 — EVPN Gateway
 
 Border Leaf 노드 그룹에만 아래 설정이 들어 있습니다(`dc1_fabric.yml:95-104`, DC2도 대칭적으로 `dc2_fabric.yml:92-101`).
 
@@ -213,7 +130,7 @@ evpn_gateway:
 
 <br>
 
-## 7. 테넌트/VXLAN 서비스 설계
+## 6. 테넌트/VXLAN 서비스 설계
 
 `dc1_fabric_services.yml:4-26`에서 정의하며, DC2의 `dc2_fabric_services.yml`도 완전히 동일한 값을 씁니다.
 
@@ -244,7 +161,7 @@ tenants:
 
 <br>
 
-## 8. 엔드포인트(호스트) 연결
+## 7. 엔드포인트(호스트) 연결
 
 `s{n}-host1/2`는 `eos_designs`가 빌드하지 않는 정적 설정(`sites/dc{n}/host_configs/*.cfg`, `make deploy_dc{n}_host_cvp`)으로 배포하며, leaf pair에 MLAG로 이중 연결됩니다.
 
@@ -261,7 +178,7 @@ tenants:
 
 <br>
 
-## 9. 패킷 한 개의 여정 — `s1-host1 → s2-host1` (Vlan10, 10.10.10.11 → 10.10.10.21)
+## 8. 패킷 한 개의 여정 — `s1-host1 → s2-host1` (Vlan10, 10.10.10.11 → 10.10.10.21)
 
 1. **s1-host1**: Vlan10 SVI에서 ARP로 목적지가 같은 서브넷임을 확인하고, 이더넷 프레임을 Port-Channel1(트렁크, VLAN 10)로 전송합니다.
 2. **s1-leaf1/s1-leaf2 (MLAG)**: 프레임을 받아 목적지 MAC이 로컬에 없으면 EVPN Type-2(MAC/IP)로 학습해 둔 원격 VTEP을 조회합니다. VXLAN(VNI 10010)으로 캡슐화하고, source는 자신의 Loopback1(10.1.1.14), 목적지 VTEP은 **자신이 배운 원격 next-hop**입니다.
@@ -277,13 +194,13 @@ tenants:
 
 <br>
 
-## 10. ANTA로 배포 상태 검증하기
+## 9. ANTA로 배포 상태 검증하기
 
-§8~§9는 사람이 직접 ping으로 확인한 결과였습니다. 이 저장소는 같은 검증을 자동화하는 수단으로 **ANTA**(Arista Network Test Automation)도 함께 포함하고 있습니다.
+§7~§8는 사람이 직접 ping으로 확인한 결과였습니다. 이 저장소는 같은 검증을 자동화하는 수단으로 **ANTA**(Arista Network Test Automation)도 함께 포함하고 있습니다.
 
 ### ANTA란
 
-ANTA는 EOS 장비의 운영 상태를 자동으로 검증하는 오픈소스 Python 테스트 프레임워크입니다([anta.arista.com](https://anta.arista.com)). AVD는 `arista.avd.anta_runner` 롤로 이를 Ansible과 통합합니다. 이 롤의 가장 큰 특징은, 테스트를 직접 작성하지 않아도 **AVD가 만든 structured config(§4의 출처)를 그대로 읽어서 장비별 테스트 카탈로그를 자동 생성**해준다는 점입니다 — BGP 이웃, 인터페이스 상태, MLAG, VXLAN/VNI 매핑처럼 이 설계에서 실제로 구성한 항목들이 자동으로 테스트 대상이 됩니다. 물론 사용자가 직접 만든 테스트 카탈로그를 추가로 얹는 것도 가능합니다.
+ANTA는 EOS 장비의 운영 상태를 자동으로 검증하는 오픈소스 Python 테스트 프레임워크입니다([anta.arista.com](https://anta.arista.com)). AVD는 `arista.avd.anta_runner` 롤로 이를 Ansible과 통합합니다. 이 롤의 가장 큰 특징은, 테스트를 직접 작성하지 않아도 **AVD가 만든 structured config(§3의 출처)를 그대로 읽어서 장비별 테스트 카탈로그를 자동 생성**해준다는 점입니다 — BGP 이웃, 인터페이스 상태, MLAG, VXLAN/VNI 매핑처럼 이 설계에서 실제로 구성한 항목들이 자동으로 테스트 대상이 됩니다. 물론 사용자가 직접 만든 테스트 카탈로그를 추가로 얹는 것도 가능합니다.
 
 ### 이 저장소에서 실행되는 위치
 
@@ -315,14 +232,14 @@ ANTA는 EOS 장비의 운영 상태를 자동으로 검증하는 오픈소스 Py
 
 <br>
 
-## 11. 참고 — 이 설계와 관련 있는 파일
+## 10. 참고 — 이 설계와 관련 있는 파일
 
 | 파일 | 내용 |
 | --- | --- |
-| `sites/dc1/group_vars/dc1_fabric.yml`, `sites/dc2/group_vars/dc2_fabric.yml` | 노드 토폴로지, AS, Loopback/MLAG 풀, `evpn_gateway`(§6), `core_interfaces.p2p_links`(§5) |
-| `sites/dc1/group_vars/dc1_fabric_services.yml`, `sites/dc2/group_vars/dc2_fabric_services.yml` | 테넌트/VRF/VLAN/VNI (§7) |
-| `sites/dc1/group_vars/dc1_fabric_ports.yml`, `sites/dc2/group_vars/dc2_fabric_ports.yml` | leaf가 host 쪽으로 자동 생성하는 포트 설정(§8) |
-| `sites/dc{n}/dci_configs/*.cfg` | core 라우터 정적 설정(§5) |
-| `sites/dc{n}/host_configs/*.cfg` | host 엔드포인트 정적 설정(§8) |
-| `sites/dc{n}/intended/structured_configs/*.yml` | AVD가 실제로 배정한 최종 IP/AS (§4의 출처) |
-| `playbooks/deploy_dc1_eapi.yml`, `sites/dc1/anta/` | ANTA 자동 검증 및 결과물(§10) |
+| `sites/dc1/group_vars/dc1_fabric.yml`, `sites/dc2/group_vars/dc2_fabric.yml` | 노드 토폴로지, AS, Loopback/MLAG 풀, `evpn_gateway`(§5), `core_interfaces.p2p_links`(§4) |
+| `sites/dc1/group_vars/dc1_fabric_services.yml`, `sites/dc2/group_vars/dc2_fabric_services.yml` | 테넌트/VRF/VLAN/VNI (§6) |
+| `sites/dc1/group_vars/dc1_fabric_ports.yml`, `sites/dc2/group_vars/dc2_fabric_ports.yml` | leaf가 host 쪽으로 자동 생성하는 포트 설정(§7) |
+| `sites/dc{n}/dci_configs/*.cfg` | core 라우터 정적 설정(§4) |
+| `sites/dc{n}/host_configs/*.cfg` | host 엔드포인트 정적 설정(§7) |
+| `sites/dc{n}/intended/structured_configs/*.yml` | AVD가 실제로 배정한 최종 IP/AS (§3의 출처) |
+| `playbooks/deploy_dc1_eapi.yml`, `sites/dc1/anta/` | ANTA 자동 검증 및 결과물(§9) |
