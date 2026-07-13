@@ -19,6 +19,7 @@
     |---claude-code-guide.md
     |---codex-cli-guide.md
     |---evpn-vxlan-labs.md
+    |---git-github-guide.md
     |---multi-domain-evpn-vxlan-guide.md
 |---playbooks
     |---build_dc1.yml
@@ -319,3 +320,10 @@ deploy_dc1_eapi: ## Deploy DC2 Spine/Leaf AVD generated configs via eAPI
 
 - Claude Code: `claude-code-guide.md`
 - Codex CLI: `codex-cli-guide.md`
+
+<br>
+<br>
+
+## 부록 - Git / GitHub 사용법 (네트워크 엔지니어를 위한 CLI 입문, 선택)
+
+git/GitHub을 처음 접하는 경우, GitHub 계정 등록부터 자주 쓰는 git 명령어, 그리고 이 저장소를 본인 GitHub 계정으로 옮기고 commit/push하는 방법까지는 **lab guide** 디렉토리의 `git-github-guide.md`를 참고하세요.
