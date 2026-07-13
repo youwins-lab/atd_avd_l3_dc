@@ -21,35 +21,13 @@ mv /tmp/codex-x86_64-unknown-linux-musl ~/.local/bin/codex
 codex --version
 ```
 
-macOS에서 직접 실행하는 경우, 다운로드 파일명만 아래와 같이 바꾸면 동일한 방식으로 설치됩니다(Apple Silicon은 `aarch64`, Intel은 `x86_64`). `~/.local/bin`이 `PATH`에 없다면 `/usr/local/bin`으로 옮기고 `sudo`를 붙이세요.
-
-``` bash
-# Apple Silicon
-curl -fsSL -o /tmp/codex.tar.gz https://github.com/openai/codex/releases/latest/download/codex-aarch64-apple-darwin.tar.gz
-# Intel
-curl -fsSL -o /tmp/codex.tar.gz https://github.com/openai/codex/releases/latest/download/codex-x86_64-apple-darwin.tar.gz
-
-tar -xzf /tmp/codex.tar.gz -C /tmp
-chmod +x /tmp/codex-*-apple-darwin
-mv /tmp/codex-*-apple-darwin /usr/local/bin/codex
-```
-
-npm이나 Homebrew를 쓸 수 있는 환경이라면 아래 명령어도 사용할 수 있습니다.
-
-``` bash
-npm install -g @openai/codex
-# 또는
-brew install codex
-```
-
-<br>
 
 ## 2. 로그인 및 실행
 
 최초 실행 시 ChatGPT 계정으로 로그인하거나 OpenAI API 키를 사용하도록 인증이 필요합니다.
 
 ``` bash
-codex login
+codex login --device-auth
 ```
 
 인증이 끝나면 저장소 루트 디렉토리(`atd_avd_l3_dc`)에서 아래 명령어로 실행합니다.
@@ -58,15 +36,15 @@ codex login
 codex
 ```
 
+<br>
+
 실행되면 대화형 세션이 시작되며, 이 디렉토리 안의 파일을 읽고 수정하거나 `make` 명령어와 ansible 플레이북 실행을 자연어로 요청할 수 있습니다. 세션을 종료하려면 `exit`를 입력하거나 `Ctrl+C`를 두 번 누르면 됩니다. 대화형 세션 없이 한 번의 프롬프트만 비대화식으로 실행하고 싶다면 `codex exec "..."` 형태로도 사용할 수 있습니다.
 
-> **참고 — 저장소 컨텍스트 파일**: Claude Code는 이 저장소의 `CLAUDE.md`를 세션 시작 시 자동으로 읽어 랩 구조를 파악합니다. Codex CLI는 관례적으로 `CLAUDE.md`가 아니라 `AGENTS.md` 파일을 같은 용도로 사용하는데, 이 저장소 루트에는 `CLAUDE.md`와 동일한 내용을 담은 `AGENTS.md`가 이미 있으므로 Codex CLI도 세션 시작 시 별도 요청 없이 이를 자동으로 읽습니다. 두 파일 중 하나만 수정하면 서로 어긋날 수 있으니, 저장소 구조나 명령어가 바뀌면 `CLAUDE.md`와 `AGENTS.md`를 함께 갱신하세요.
+> **참고 — 저장소 컨텍스트 파일**: Codex CLI는 이 저장소의  `AGENTS.md` 를 세션 시작 시 자동으로 읽어 랩 구조를 파악합니다. 이 저장소 루트에는 `AGENTS.md`가 이미 있으므로 Codex CLI도 세션 시작 시 별도 요청 없이 이를 자동으로 읽습니다.
 
 <br>
 
 ## 3. AVD 6.3.0 작업에 Codex CLI 활용하기 — 실전 예시
-
-아래 예시는 `lab guide/claude-code-guide.md`와 동일한 워크플로우(`group_vars` 수정 → `make build_dc{n}` → diff 확인 → 배포 → ANTA 검증)를 Codex CLI로 진행하는 프롬프트입니다. `AGENTS.md`를 세션 시작 시 자동으로 읽으므로, 별도로 컨텍스트 파일을 먼저 읽으라고 요청하지 않아도 됩니다.
 
 ### 예시 1 — 새 VLAN 추가 (Lab 1과 동일한 작업을 Codex에게 위임)
 
