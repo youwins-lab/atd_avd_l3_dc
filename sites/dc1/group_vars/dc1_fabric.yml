@@ -96,6 +96,18 @@ l3leaf:
               - prefix: 10.231.0.2/32
               - prefix: 10.231.0.4/32
               - prefix: 10.231.1.2/32
+        # --- Batfish 사전 검증 실습 시나리오 (평소에는 주석 유지) -------------------
+        # Edge(Border Leaf)에 원격 DC의 VTEP(10.1.1.102 = s2-brdr1/2 공유 Loopback1)로 가는
+        # 경로를 Null0으로 흘려보내는 잘못된 정적 경로. EVPN 피어링은 Loopback0(10.1.0.102)를
+        # 쓰므로 BGP 세션은 멀쩡히 Established로 남고, VXLAN 캡슐화 목적지만 죽어서
+        # s1-host1 <-> s2-host1 통신이 조용히 끊긴다.
+        # 주석을 해제하고 `make build_dc1` 후 `make preflight`를 돌리면 "VTEP 간 도달성"
+        # 검사가 배포 전에 이걸 잡아낸다. 자세한 절차는
+        # `lab guide/batfish-preflight-guide.md` §7-A 참고.
+        # static_routes:
+        #   - prefix: 10.1.1.102/32
+        #     interface: 'null0'
+        # ---------------------------------------------------------------------------
       filter:
         tenants: [ATD_DC, New-Tenant]
         tags: ['DC']
