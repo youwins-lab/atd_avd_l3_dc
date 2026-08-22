@@ -8,7 +8,7 @@ servers:
         switch_ports: [Ethernet4, Ethernet4]
         switches: [s1-leaf1, s1-leaf2]
         mode: trunk
-        vlans: "10,20"
+        vlans: "10,20,100,200"
         port_channel:
           mode: active
   - name: s1-host2
@@ -17,6 +17,6 @@ servers:
         switch_ports: [Ethernet4, Ethernet4]
         switches: [s1-leaf3, s1-leaf4]
         mode: trunk
-        vlans: "10,20"
+        vlans: "10,20,100,200"
         port_channel:
           mode: active

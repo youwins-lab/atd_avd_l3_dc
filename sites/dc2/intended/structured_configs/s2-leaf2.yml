@@ -122,7 +122,7 @@ port_channel_interfaces:
     enabled: true
     mode: trunk
     trunk:
-      allowed_vlan: 10,20
+      allowed_vlan: 10,20,100,200
 prefix_lists:
 - name: PL-LOOPBACKS-EVPN-OVERLAY
   sequence_numbers:
@@ -134,6 +134,10 @@ prefix_lists:
   sequence_numbers:
   - sequence: 10
     action: permit 192.2.2.226/31
+  - sequence: 20
+    action: permit 192.4.4.226/31
+  - sequence: 30
+    action: permit 192.5.4.226/31
 route_maps:
 - name: RM-MLAG-PEER-IN
   sequence_numbers:
@@ -258,6 +262,56 @@ router_bgp:
       - 10020:10020
     redistribute_routes:
     - learned
+  - id: 30
+    metadata:
+      tenants:
+      - ATD_DC
+    rd: 10.1.0.116:10030
+    route_targets:
+      both:
+      - 10030:10030
+    redistribute_routes:
+    - learned
+  - id: 40
+    metadata:
+      tenants:
+      - ATD_DC
+    rd: 10.1.0.116:10040
+    route_targets:
+      both:
+      - 10040:10040
+    redistribute_routes:
+    - learned
+  - id: 50
+    metadata:
+      tenants:
+      - ATD_DC
+    rd: 10.1.0.116:10050
+    route_targets:
+      both:
+      - 10050:10050
+    redistribute_routes:
+    - learned
+  - id: 100
+    metadata:
+      tenants:
+      - New-Tenant
+    rd: 10.1.0.116:20100
+    route_targets:
+      both:
+      - 20100:20100
+    redistribute_routes:
+    - learned
+  - id: 200
+    metadata:
+      tenants:
+      - New-Tenant
+    rd: 10.1.0.116:20200
+    route_targets:
+      both:
+      - 20200:20200
+    redistribute_routes:
+    - learned
   address_family_evpn:
     peer_groups:
     - name: EVPN-OVERLAY-LOCAL-PEERS
@@ -291,6 +345,50 @@ router_bgp:
     - ip_address: 192.2.2.226
       peer_group: MLAG-IPV4-UNDERLAY-PEER
       description: s2-leaf1_Vlan4001
+    redistribute:
+      connected:
+        enabled: true
+        route_map: RM-CONN-2-BGP-VRFS
+  - name: '100'
+    rd: 10.1.0.116:50003
+    route_targets:
+      import:
+      - address_family: evpn
+        route_targets:
+        - 50003:50003
+      export:
+      - address_family: evpn
+        route_targets:
+        - 50003:50003
+    router_id: 10.1.0.116
+    updates:
+      wait_install: true
+    neighbors:
+    - ip_address: 192.4.4.226
+      peer_group: MLAG-IPV4-UNDERLAY-PEER
+      description: s2-leaf1_Vlan4003
+    redistribute:
+      connected:
+        enabled: true
+        route_map: RM-CONN-2-BGP-VRFS
+  - name: '200'
+    rd: 10.1.0.116:50004
+    route_targets:
+      import:
+      - address_family: evpn
+        route_targets:
+        - 50004:50004
+      export:
+      - address_family: evpn
+        route_targets:
+        - 50004:50004
+    router_id: 10.1.0.116
+    updates:
+      wait_install: true
+    neighbors:
+    - ip_address: 192.5.4.226
+      peer_group: MLAG-IPV4-UNDERLAY-PEER
+      description: s2-leaf1_Vlan4004
     redistribute:
       connected:
         enabled: true
@@ -343,6 +441,39 @@ vlan_interfaces:
     - ATD_DC
     tags:
     - DC
+- name: Vlan30
+  description: thirty
+  shutdown: false
+  vrf: A
+  ip_address_virtual: 10.30.30.1/24
+  mtu: 9014
+  metadata:
+    tenants:
+    - ATD_DC
+    tags:
+    - DC
+- name: Vlan40
+  description: forty
+  shutdown: false
+  vrf: A
+  ip_address_virtual: 10.40.40.1/24
+  mtu: 9014
+  metadata:
+    tenants:
+    - ATD_DC
+    tags:
+    - DC
+- name: Vlan50
+  description: fifty
+  shutdown: false
+  vrf: A
+  ip_address_virtual: 10.50.50.1/24
+  mtu: 9014
+  metadata:
+    tenants:
+    - ATD_DC
+    tags:
+    - DC
 - name: Vlan4001
   description: MLAG_L3_VRF_A
   shutdown: false
@@ -352,6 +483,48 @@ vlan_interfaces:
   metadata:
     tenants:
     - ATD_DC
+    type: underlay_peering
+- name: Vlan100
+  description: onehundred
+  shutdown: false
+  vrf: '100'
+  ip_address_virtual: 10.100.100.1/24
+  mtu: 9014
+  metadata:
+    tenants:
+    - New-Tenant
+    tags:
+    - DC
+- name: Vlan4003
+  description: MLAG_L3_VRF_100
+  shutdown: false
+  vrf: '100'
+  ip_address: 192.4.4.227/31
+  mtu: 9214
+  metadata:
+    tenants:
+    - New-Tenant
+    type: underlay_peering
+- name: Vlan200
+  description: twohundred
+  shutdown: false
+  vrf: '200'
+  ip_address_virtual: 10.200.200.1/24
+  mtu: 9014
+  metadata:
+    tenants:
+    - New-Tenant
+    tags:
+    - DC
+- name: Vlan4004
+  description: MLAG_L3_VRF_200
+  shutdown: false
+  vrf: '200'
+  ip_address: 192.5.4.227/31
+  mtu: 9214
+  metadata:
+    tenants:
+    - New-Tenant
     type: underlay_peering
 vlan_internal_order:
   allocation: ascending
@@ -383,6 +556,21 @@ vlans:
   metadata:
     tenants:
     - ATD_DC
+- id: 30
+  name: thirty
+  metadata:
+    tenants:
+    - ATD_DC
+- id: 40
+  name: forty
+  metadata:
+    tenants:
+    - ATD_DC
+- id: 50
+  name: fifty
+  metadata:
+    tenants:
+    - ATD_DC
 - id: 4001
   name: MLAG_L3_VRF_A
   trunk_groups:
@@ -390,6 +578,30 @@ vlans:
   metadata:
     tenants:
     - ATD_DC
+- id: 100
+  name: onehundred
+  metadata:
+    tenants:
+    - New-Tenant
+- id: 4003
+  name: MLAG_L3_VRF_100
+  trunk_groups:
+  - MLAG
+  metadata:
+    tenants:
+    - New-Tenant
+- id: 200
+  name: twohundred
+  metadata:
+    tenants:
+    - New-Tenant
+- id: 4004
+  name: MLAG_L3_VRF_200
+  trunk_groups:
+  - MLAG
+  metadata:
+    tenants:
+    - New-Tenant
 vrfs:
 - name: default
   ip_routing: false
@@ -398,6 +610,16 @@ vrfs:
   metadata:
     tenants:
     - ATD_DC
+- name: '100'
+  ip_routing: true
+  metadata:
+    tenants:
+    - New-Tenant
+- name: '200'
+  ip_routing: true
+  metadata:
+    tenants:
+    - New-Tenant
 vxlan_interface:
   vxlan1:
     description: s2-leaf2_VTEP
@@ -410,6 +632,20 @@ vxlan_interface:
         vni: 10010
       - id: 20
         vni: 10020
+      - id: 30
+        vni: 10030
+      - id: 40
+        vni: 10040
+      - id: 50
+        vni: 10050
+      - id: 100
+        vni: 20100
+      - id: 200
+        vni: 20200
       vrfs:
       - name: A
         vni: 50001
+      - name: '100'
+        vni: 50003
+      - name: '200'
+        vni: 50004

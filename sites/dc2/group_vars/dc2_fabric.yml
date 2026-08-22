@@ -80,83 +80,77 @@ l3leaf:
         edge_port:
           bpduguard_default: true
   node_groups:
-    # ####################################################
-    # # DC2 Border Leafs - lab guide/evpn-vxlan-labs.md  #
-    # # Lab 2에서 이 블록(evpn_gateway 제외)과             #
-    # # core_interfaces(아래)의 주석을 해제하고,           #
-    # # Lab 3에서 evpn_gateway 블록의 주석을 마저           #
-    # # 해제합니다.                                        #
-    # ####################################################
-    # ####################################################
-    # # DC2 Border Leafs                                 #
-    # ####################################################
-    # - group: BrdrLeafs
-    #   platform: ceos
-    #   cv_tags_topology_type: edge
-    #   structured_config:
-    #     router_bgp:
-    #       address_family_ipv4:
-    #         networks:
-    #           - prefix: 10.231.0.2/32
-    #           - prefix: 10.231.0.4/32
-    #           - prefix: 10.231.1.2/32
-    #   filter:
-    #     tenants: [ATD_DC]
-    #     tags: ['DC']
-    #   bgp_as: 65199
-    #   # lab guide/evpn-vxlan-labs.md Lab 3에서 evpn_gateway 블록의 주석을 해제합니다.
-    #   evpn_gateway:
-    #     evpn_l2:
-    #       enabled: true
-    #     remote_peers:
-    #     - hostname: s1-brdr1
-    #       ip_address: 10.1.0.2
-    #       bgp_as: 65099
-    #     - hostname: s1-brdr2
-    #       ip_address: 10.1.0.4
-    #       bgp_as: 65099
-    #   nodes:
-    #     - name: s2-brdr1
-    #       id: 102
-    #       mgmt_ip: 192.168.0.200/24
-    #       uplink_switch_interfaces: [Ethernet7, Ethernet7]
-    #       uplink_interfaces: [Ethernet2, Ethernet3]
-    #       mlag_interfaces: [Ethernet1, Ethernet6]
-    #       structured_config:
-    #         router_bgp:
-    #           neighbors:
-    #             - ip_address: 172.16.255.129
-    #               remote_as: 65502
-    #               description: s2-core1 VRF Default
-    #               peer_group: IPV4-UNDERLAY-PEERS
-    #             - ip_address: 172.16.255.131
-    #               remote_as: 65502
-    #               description: s2-core2 VRF Default
-    #               peer_group: IPV4-UNDERLAY-PEERS
-    #     - name: s2-brdr2
-    #       id: 104
-    #       mgmt_ip: 192.168.0.201/24
-    #       uplink_switch_interfaces: [Ethernet8, Ethernet8]
-    #       uplink_interfaces: [Ethernet2, Ethernet3]
-    #       mlag_interfaces: [Ethernet1, Ethernet6]
-    #       structured_config:
-    #         router_bgp:
-    #           neighbors:
-    #             - ip_address: 172.16.255.133
-    #               remote_as: 65502
-    #               description: s2-core1 VRF Default
-    #               peer_group: IPV4-UNDERLAY-PEERS
-    #             - ip_address: 172.16.255.135
-    #               remote_as: 65502
-    #               description: s2-core2 VRF Default
-    #               peer_group: IPV4-UNDERLAY-PEERS
+    ####################################################
+    # DC2 Border Leafs                                 #
+    ####################################################
+    - group: BrdrLeafs
+      platform: ceos
+      cv_tags_topology_type: edge
+      structured_config:
+        router_bgp:
+          address_family_ipv4:
+            networks:
+              - prefix: 10.231.0.2/32
+              - prefix: 10.231.0.4/32
+              - prefix: 10.231.1.2/32
+      filter:
+        tenants: [ATD_DC, New-Tenant]
+        tags: ['DC']
+      bgp_as: 65199
+      evpn_gateway:
+        evpn_l2:
+          enabled: true
+        evpn_l3:
+          enabled: true
+        remote_peers:
+        - hostname: s1-brdr1
+          ip_address: 10.1.0.2
+          bgp_as: 65099
+        - hostname: s1-brdr2
+          ip_address: 10.1.0.4
+          bgp_as: 65099
+      nodes:
+        - name: s2-brdr1
+          id: 102
+          mgmt_ip: 192.168.0.200/24
+          uplink_switch_interfaces: [Ethernet7, Ethernet7]
+          uplink_interfaces: [Ethernet2, Ethernet3]
+          mlag_interfaces: [Ethernet1, Ethernet6]
+          structured_config:
+            router_bgp:
+              neighbors:
+                - ip_address: 172.16.255.129
+                  remote_as: 65502
+                  description: s2-core1 VRF Default
+                  peer_group: IPV4-UNDERLAY-PEERS
+                - ip_address: 172.16.255.131
+                  remote_as: 65502
+                  description: s2-core2 VRF Default
+                  peer_group: IPV4-UNDERLAY-PEERS
+        - name: s2-brdr2
+          id: 104
+          mgmt_ip: 192.168.0.201/24
+          uplink_switch_interfaces: [Ethernet8, Ethernet8]
+          uplink_interfaces: [Ethernet2, Ethernet3]
+          mlag_interfaces: [Ethernet1, Ethernet6]
+          structured_config:
+            router_bgp:
+              neighbors:
+                - ip_address: 172.16.255.133
+                  remote_as: 65502
+                  description: s2-core1 VRF Default
+                  peer_group: IPV4-UNDERLAY-PEERS
+                - ip_address: 172.16.255.135
+                  remote_as: 65502
+                  description: s2-core2 VRF Default
+                  peer_group: IPV4-UNDERLAY-PEERS
 
     ####################################################
     # DC2 Leaf Pair 1                                  #
     ####################################################
     - group: LeafPair1
       filter:
-        tenants: [ATD_DC]
+        tenants: [ATD_DC, New-Tenant]
         tags: ['DC']
       bgp_as: 65101
       rack: DC2-RACK1
@@ -175,57 +169,79 @@ l3leaf:
     ####################################################
     - group: LeafPair2
       filter:
-        tenants: [ATD_DC]
+        tenants: [ATD_DC, New-Tenant]
         tags: ['DC']
       bgp_as: 65102
       rack: DC2-RACK2
-      # lab guide/evpn-vxlan-labs.md Lab 4에서 이 structured_config 블록의 주석을 해제합니다.
-      # structured_config:
-      #   monitor_connectivity:
-      #     interval: 5
-      #     vrfs:
-      #       - name: A
-      #         hosts:
-      #           - name: s1-host1
-      #             ip: 10.10.10.11
+      structured_config:
+        monitor_connectivity:
+          shutdown: false
+          interval: 5
+          vrfs:
+            - name: A
+              interface_sets:
+                - name: MONITOR-DIAG
+                  interfaces: Loopback210
+              hosts:
+                - name: s1-host1
+                  ip: 10.10.10.11
+                  local_interfaces: MONITOR-DIAG
       nodes:
         - name: s2-leaf3
           id: 115
           mgmt_ip: 192.168.0.24/24
           uplink_switch_interfaces: [Ethernet4, Ethernet4]
+          structured_config:
+            loopback_interfaces:
+              - name: Loopback210
+                description: Monitor-Connectivity-Diag
+                vrf: A
+                ip_address: 10.255.10.115/32
+            virtual_source_nat_vrfs:
+              - name: A
+                ip_address: 10.255.10.115
         - name: s2-leaf4
           id: 117
           mgmt_ip: 192.168.0.25/24
           uplink_switch_interfaces: [Ethernet5, Ethernet5]
+          structured_config:
+            loopback_interfaces:
+              - name: Loopback210
+                description: Monitor-Connectivity-Diag
+                vrf: A
+                ip_address: 10.255.10.117/32
+            virtual_source_nat_vrfs:
+              - name: A
+                ip_address: 10.255.10.117
 
-# ####################################################
-# # External Fabric PtP L3 Conncectivity             #
-# ####################################################
-# core_interfaces:
-#   p2p_links:
-#     ############################################################
-#     # s2-brdr1 to s2-cores UNDERLAY (Default VRF) Peerings     #
-#     ############################################################
-#     - ip: [ 172.16.255.128/31, 172.16.255.129/31 ]
-#       nodes: [ s2-brdr1, s2-core1 ]
-#       interfaces: [ Ethernet4, Ethernet2 ]
-#       include_in_underlay_protocol: false
-#       mtu: 9214
-#     - ip: [ 172.16.255.130/31, 172.16.255.131/31 ]
-#       nodes: [ s2-brdr1, s2-core2 ]
-#       interfaces: [ Ethernet5, Ethernet2 ]
-#       include_in_underlay_protocol: false
-#       mtu: 9214
-#     ############################################################
-#     # s2-brdr2 to s2-cores UNDERLAY (Default VRF) Peerings     #
-#     ############################################################
-#     - ip: [ 172.16.255.132/31, 172.16.255.133/31 ]
-#       nodes: [ s2-brdr2, s2-core1 ]
-#       interfaces: [ Ethernet4, Ethernet3 ]
-#       include_in_underlay_protocol: false
-#       mtu: 9214
-#     - ip: [  172.16.255.134/31, 172.16.255.135/31 ]
-#       nodes: [ s2-brdr2, s2-core2 ]
-#       interfaces: [ Ethernet5, Ethernet3 ]
-#       include_in_underlay_protocol: false
-#       mtu: 9214
+####################################################
+# External Fabric PtP L3 Conncectivity             #
+####################################################
+core_interfaces:
+  p2p_links:
+    ############################################################
+    # s2-brdr1 to s2-cores UNDERLAY (Default VRF) Peerings     #
+    ############################################################
+    - ip: [ 172.16.255.128/31, 172.16.255.129/31 ]
+      nodes: [ s2-brdr1, s2-core1 ]
+      interfaces: [ Ethernet4, Ethernet2 ]
+      include_in_underlay_protocol: false
+      mtu: 9214
+    - ip: [ 172.16.255.130/31, 172.16.255.131/31 ]
+      nodes: [ s2-brdr1, s2-core2 ]
+      interfaces: [ Ethernet5, Ethernet2 ]
+      include_in_underlay_protocol: false
+      mtu: 9214
+    ############################################################
+    # s2-brdr2 to s2-cores UNDERLAY (Default VRF) Peerings     #
+    ############################################################
+    - ip: [ 172.16.255.132/31, 172.16.255.133/31 ]
+      nodes: [ s2-brdr2, s2-core1 ]
+      interfaces: [ Ethernet4, Ethernet3 ]
+      include_in_underlay_protocol: false
+      mtu: 9214
+    - ip: [  172.16.255.134/31, 172.16.255.135/31 ]
+      nodes: [ s2-brdr2, s2-core2 ]
+      interfaces: [ Ethernet5, Ethernet3 ]
+      include_in_underlay_protocol: false
+      mtu: 9214

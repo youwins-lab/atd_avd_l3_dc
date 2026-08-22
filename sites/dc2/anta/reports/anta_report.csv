@@ -1,40 +1,82 @@
 Device,Test Name,Test Status,Message(s),Test description,Test category
+s2-brdr1,VerifyLoggingErrors,failure,"Device has reported syslog messages with a severity of ERRORS or higher:
+Aug 22 10:07:59 8e6f891e1e05 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+ 
+",Verifies there are no syslog messages with a severity of ERRORS or higher.,Logging
+s2-brdr1,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77% - Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77%,Verifies that no partition is utilizing more than 75% of its disk space.,System
+s2-brdr1,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 91.97%,Verifies whether the memory utilization is below 75%.,System
+s2-brdr2,VerifyLoggingErrors,failure,"Device has reported syslog messages with a severity of ERRORS or higher:
+Aug 22 10:08:04 11849ba866d0 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+ 
+",Verifies there are no syslog messages with a severity of ERRORS or higher.,Logging
+s2-brdr2,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77% - Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77%,Verifies that no partition is utilizing more than 75% of its disk space.,System
+s2-brdr2,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 91.56%,Verifies whether the memory utilization is below 75%.,System
 s2-leaf1,VerifyLoggingErrors,failure,"Device has reported syslog messages with a severity of ERRORS or higher:
-Aug  2 14:04:43 1da5c55c810d NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+Aug 22 10:07:39 cf7e62cc7539 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+ Aug 22 10:10:21 cf7e62cc7539 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.110 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:37 cf7e62cc7539 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.110 (VRF default AS 65100) 6/7 (Cease/connection collision resolution) 0 bytes 
  
 ",Verifies there are no syslog messages with a severity of ERRORS or higher.,Logging
-s2-leaf1,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  76% / - Higher disk space utilization - Expected: 75% Actual: 76% - Mount point: /dev/sda2        60G   46G   15G  76% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 76%,Verifies that no partition is utilizing more than 75% of its disk space.,System
-s2-leaf1,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 92.37%,Verifies whether the memory utilization is below 75%.,System
+s2-leaf1,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77% - Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77%,Verifies that no partition is utilizing more than 75% of its disk space.,System
+s2-leaf1,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 91.63%,Verifies whether the memory utilization is below 75%.,System
 s2-leaf2,VerifyLoggingErrors,failure,"Device has reported syslog messages with a severity of ERRORS or higher:
-Aug  2 14:04:47 b67b3833deb8 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+Aug 22 10:07:42 ff43fd3a93ec NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
  
 ",Verifies there are no syslog messages with a severity of ERRORS or higher.,Logging
-s2-leaf2,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  76% / - Higher disk space utilization - Expected: 75% Actual: 76% - Mount point: /dev/sda2        60G   46G   15G  76% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 76%,Verifies that no partition is utilizing more than 75% of its disk space.,System
-s2-leaf2,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 92.84%,Verifies whether the memory utilization is below 75%.,System
+s2-leaf2,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77% - Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77%,Verifies that no partition is utilizing more than 75% of its disk space.,System
+s2-leaf2,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 91.99%,Verifies whether the memory utilization is below 75%.,System
 s2-leaf3,VerifyLoggingErrors,failure,"Device has reported syslog messages with a severity of ERRORS or higher:
-Aug  2 14:04:51 afb742eabb6e NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+Aug 22 10:07:47 c931482da3ca NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+ Aug 22 10:10:28 c931482da3ca Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.112 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:28 c931482da3ca Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.110 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:45 s2-leaf3 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.112 (VRF default AS 65100) 6/7 (Cease/connection collision resolution) 0 bytes 
  
 ",Verifies there are no syslog messages with a severity of ERRORS or higher.,Logging
-s2-leaf3,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  76% / - Higher disk space utilization - Expected: 75% Actual: 76% - Mount point: /dev/sda2        60G   46G   15G  76% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 76%,Verifies that no partition is utilizing more than 75% of its disk space.,System
-s2-leaf3,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 92.36%,Verifies whether the memory utilization is below 75%.,System
+s2-leaf3,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77% - Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77%,Verifies that no partition is utilizing more than 75% of its disk space.,System
+s2-leaf3,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 91.60%,Verifies whether the memory utilization is below 75%.,System
 s2-leaf4,VerifyLoggingErrors,failure,"Device has reported syslog messages with a severity of ERRORS or higher:
-Aug  2 14:04:54 6ab286f17972 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+Aug 22 10:07:49 2fc0a650a0db NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+ Aug 22 10:10:17 2fc0a650a0db Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.255.1.210 (VRF default AS 65100) 6/7 (Cease/connection collision resolution) 0 bytes 
+ Aug 22 10:10:32 2fc0a650a0db Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.110 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:32 2fc0a650a0db Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.112 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
  
 ",Verifies there are no syslog messages with a severity of ERRORS or higher.,Logging
-s2-leaf4,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  76% / - Higher disk space utilization - Expected: 75% Actual: 76% - Mount point: /dev/sda2        60G   46G   15G  76% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 76%,Verifies that no partition is utilizing more than 75% of its disk space.,System
-s2-leaf4,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 92.94%,Verifies whether the memory utilization is below 75%.,System
+s2-leaf4,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77% - Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77%,Verifies that no partition is utilizing more than 75% of its disk space.,System
+s2-leaf4,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 91.52%,Verifies whether the memory utilization is below 75%.,System
 s2-spine1,VerifyLoggingErrors,failure,"Device has reported syslog messages with a severity of ERRORS or higher:
-Aug  2 14:04:38 477d755d3d20 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+Aug 22 10:07:32 faaea75c03b7 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+ Aug 22 10:10:21 s2-spine1 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.114 (VRF default AS 65101) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:28 s2-spine1 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.115 (VRF default AS 65102) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:32 s2-spine1 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.117 (VRF default AS 65102) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:37 s2-spine1 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.114 (VRF default AS 65101) 6/7 (Cease/connection collision resolution) 0 bytes 
  
 ",Verifies there are no syslog messages with a severity of ERRORS or higher.,Logging
-s2-spine1,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  76% / - Higher disk space utilization - Expected: 75% Actual: 76% - Mount point: /dev/sda2        60G   46G   15G  76% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 76%,Verifies that no partition is utilizing more than 75% of its disk space.,System
-s2-spine1,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 92.74%,Verifies whether the memory utilization is below 75%.,System
+s2-spine1,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77% - Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77%,Verifies that no partition is utilizing more than 75% of its disk space.,System
+s2-spine1,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 91.97%,Verifies whether the memory utilization is below 75%.,System
 s2-spine2,VerifyLoggingErrors,failure,"Device has reported syslog messages with a severity of ERRORS or higher:
-Aug  2 14:04:40 b1c5eec41919 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+Aug 22 10:07:36 8b4c1c537292 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system
+ Aug 22 10:10:17 s2-spine2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.255.1.211 (VRF default AS 65102) 6/7 (Cease/connection collision resolution) 0 bytes 
+ Aug 22 10:10:28 s2-spine2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.115 (VRF default AS 65102) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:32 s2-spine2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.117 (VRF default AS 65102) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
+ Aug 22 10:10:45 s2-spine2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.115 (VRF default AS 65102) 6/7 (Cease/connection collision resolution) 0 bytes 
  
 ",Verifies there are no syslog messages with a severity of ERRORS or higher.,Logging
-s2-spine2,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  76% / - Higher disk space utilization - Expected: 75% Actual: 76% - Mount point: /dev/sda2        60G   46G   15G  76% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 76%,Verifies that no partition is utilizing more than 75% of its disk space.,System
-s2-spine2,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 92.95%,Verifies whether the memory utilization is below 75%.,System
+s2-spine2,VerifyFileSystemUtilization,failure,Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77% - Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77%,Verifies that no partition is utilizing more than 75% of its disk space.,System
+s2-spine2,VerifyMemoryUtilization,failure,Device has reported a high memory usage - Expected: < 75% Actual: 91.98%,Verifies whether the memory utilization is below 75%.,System
+s2-brdr1,VerifyEnvironmentCooling,skipped,VerifyEnvironmentCooling test is not supported on cEOSLab,Verifies the status of power supply fans and all fan trays.,Hardware
+s2-brdr1,VerifyEnvironmentPower,skipped,VerifyEnvironmentPower test is not supported on cEOSLab,Verifies the power supplies state and input voltage.,Hardware
+s2-brdr1,VerifyEnvironmentSystemCooling,skipped,VerifyEnvironmentSystemCooling test is not supported on cEOSLab,Verifies the device's system cooling status.,Hardware
+s2-brdr1,VerifyInventory,skipped,VerifyInventory test is not supported on cEOSLab,Verifies the physical hardware inventory of the device.,Hardware
+s2-brdr1,VerifyTemperature,skipped,VerifyTemperature test is not supported on cEOSLab,Verifies if the device temperature is within acceptable limits.,Hardware
+s2-brdr1,VerifyTransceiversManufacturers,skipped,VerifyTransceiversManufacturers test is not supported on cEOSLab,Verifies if all the transceivers come from approved manufacturers.,Hardware
+s2-brdr1,VerifyTransceiversTemperature,skipped,VerifyTransceiversTemperature test is not supported on cEOSLab,Verifies if all the transceivers are operating at an acceptable temperature.,Hardware
+s2-brdr2,VerifyEnvironmentCooling,skipped,VerifyEnvironmentCooling test is not supported on cEOSLab,Verifies the status of power supply fans and all fan trays.,Hardware
+s2-brdr2,VerifyEnvironmentPower,skipped,VerifyEnvironmentPower test is not supported on cEOSLab,Verifies the power supplies state and input voltage.,Hardware
+s2-brdr2,VerifyEnvironmentSystemCooling,skipped,VerifyEnvironmentSystemCooling test is not supported on cEOSLab,Verifies the device's system cooling status.,Hardware
+s2-brdr2,VerifyInventory,skipped,VerifyInventory test is not supported on cEOSLab,Verifies the physical hardware inventory of the device.,Hardware
+s2-brdr2,VerifyTemperature,skipped,VerifyTemperature test is not supported on cEOSLab,Verifies if the device temperature is within acceptable limits.,Hardware
+s2-brdr2,VerifyTransceiversManufacturers,skipped,VerifyTransceiversManufacturers test is not supported on cEOSLab,Verifies if all the transceivers come from approved manufacturers.,Hardware
+s2-brdr2,VerifyTransceiversTemperature,skipped,VerifyTransceiversTemperature test is not supported on cEOSLab,Verifies if all the transceivers are operating at an acceptable temperature.,Hardware
 s2-leaf1,VerifyEnvironmentCooling,skipped,VerifyEnvironmentCooling test is not supported on cEOSLab,Verifies the status of power supply fans and all fan trays.,Hardware
 s2-leaf1,VerifyEnvironmentPower,skipped,VerifyEnvironmentPower test is not supported on cEOSLab,Verifies the power supplies state and input voltage.,Hardware
 s2-leaf1,VerifyEnvironmentSystemCooling,skipped,VerifyEnvironmentSystemCooling test is not supported on cEOSLab,Verifies the device's system cooling status.,Hardware
@@ -77,6 +119,52 @@ s2-spine2,VerifyInventory,skipped,VerifyInventory test is not supported on cEOSL
 s2-spine2,VerifyTemperature,skipped,VerifyTemperature test is not supported on cEOSLab,Verifies if the device temperature is within acceptable limits.,Hardware
 s2-spine2,VerifyTransceiversManufacturers,skipped,VerifyTransceiversManufacturers test is not supported on cEOSLab,Verifies if all the transceivers come from approved manufacturers.,Hardware
 s2-spine2,VerifyTransceiversTemperature,skipped,VerifyTransceiversTemperature test is not supported on cEOSLab,Verifies if all the transceivers are operating at an acceptable temperature.,Hardware
+s2-brdr1,VerifyBGPPeerSession,success,,Verifies the session state of BGP peers.,BGP
+s2-brdr1,VerifyRunningConfigDiffs,success,,Verifies there is no difference between the running-config and the startup-config.,Configuration
+s2-brdr1,VerifyZeroTouch,success,,Verifies ZeroTouch is disabled.,Configuration
+s2-brdr1,VerifyLLDPNeighbors,success,,Verifies the connection status of the specified LLDP (Link Layer Discovery Protocol) neighbors.,Connectivity
+s2-brdr1,VerifyReachability,success,,Verifies point-to-point reachability between Ethernet interfaces.,Connectivity
+s2-brdr1,VerifyIllegalLACP,success,,Verifies there are no illegal LACP packets in port channels.,Interfaces
+s2-brdr1,VerifyInterfaceDiscards,success,,Verifies that the interfaces packet discard counters are equal to zero.,Interfaces
+s2-brdr1,VerifyInterfaceErrDisabled,success,,Verifies there are no interfaces in the errdisabled state.,Interfaces
+s2-brdr1,VerifyInterfaceErrors,success,,Verifies that the interfaces error counters are equal to zero.,Interfaces
+s2-brdr1,VerifyInterfaceUtilization,success,,Verifies that the utilization of interfaces is below a certain threshold.,Interfaces
+s2-brdr1,VerifyInterfacesStatus,success,,Verifies the operational states of specified interfaces to ensure they match expected configurations.,Interfaces
+s2-brdr1,VerifyPortChannels,success,,Verifies there are no inactive ports in port channels.,Interfaces
+s2-brdr1,VerifyMlagConfigSanity,success,,Verifies there are no MLAG config-sanity inconsistencies.,MLAG
+s2-brdr1,VerifyMlagInterfaces,success,,Verifies there are no inactive or active-partial MLAG ports.,MLAG
+s2-brdr1,VerifyMlagStatus,success,,Verifies the health status of the MLAG configuration.,MLAG
+s2-brdr1,VerifyRoutingProtocolModel,success,,Verifies the configured routing protocol model.,Routing
+s2-brdr1,VerifySTPCounters,success,,Verifies there is no errors in STP BPDU packets.,STP
+s2-brdr1,VerifyAgentLogs,success,,Verifies there are no agent crash reports.,System
+s2-brdr1,VerifyCoredump,success,,Verifies there are no core dump files.,System
+s2-brdr1,VerifyMaintenance,success,,Verifies that the device is not currently under or entering maintenance.,System
+s2-brdr1,VerifyNTP,success,,Verifies if NTP is synchronised.,System
+s2-brdr1,VerifyReloadCause,success,,Verifies the last reload cause of the device.,System
+s2-brdr1,VerifyVxlanConfigSanity,success,,Verifies there are no VXLAN config-sanity inconsistencies.,VXLAN
+s2-brdr2,VerifyBGPPeerSession,success,,Verifies the session state of BGP peers.,BGP
+s2-brdr2,VerifyRunningConfigDiffs,success,,Verifies there is no difference between the running-config and the startup-config.,Configuration
+s2-brdr2,VerifyZeroTouch,success,,Verifies ZeroTouch is disabled.,Configuration
+s2-brdr2,VerifyLLDPNeighbors,success,,Verifies the connection status of the specified LLDP (Link Layer Discovery Protocol) neighbors.,Connectivity
+s2-brdr2,VerifyReachability,success,,Verifies point-to-point reachability between Ethernet interfaces.,Connectivity
+s2-brdr2,VerifyIllegalLACP,success,,Verifies there are no illegal LACP packets in port channels.,Interfaces
+s2-brdr2,VerifyInterfaceDiscards,success,,Verifies that the interfaces packet discard counters are equal to zero.,Interfaces
+s2-brdr2,VerifyInterfaceErrDisabled,success,,Verifies there are no interfaces in the errdisabled state.,Interfaces
+s2-brdr2,VerifyInterfaceErrors,success,,Verifies that the interfaces error counters are equal to zero.,Interfaces
+s2-brdr2,VerifyInterfaceUtilization,success,,Verifies that the utilization of interfaces is below a certain threshold.,Interfaces
+s2-brdr2,VerifyInterfacesStatus,success,,Verifies the operational states of specified interfaces to ensure they match expected configurations.,Interfaces
+s2-brdr2,VerifyPortChannels,success,,Verifies there are no inactive ports in port channels.,Interfaces
+s2-brdr2,VerifyMlagConfigSanity,success,,Verifies there are no MLAG config-sanity inconsistencies.,MLAG
+s2-brdr2,VerifyMlagInterfaces,success,,Verifies there are no inactive or active-partial MLAG ports.,MLAG
+s2-brdr2,VerifyMlagStatus,success,,Verifies the health status of the MLAG configuration.,MLAG
+s2-brdr2,VerifyRoutingProtocolModel,success,,Verifies the configured routing protocol model.,Routing
+s2-brdr2,VerifySTPCounters,success,,Verifies there is no errors in STP BPDU packets.,STP
+s2-brdr2,VerifyAgentLogs,success,,Verifies there are no agent crash reports.,System
+s2-brdr2,VerifyCoredump,success,,Verifies there are no core dump files.,System
+s2-brdr2,VerifyMaintenance,success,,Verifies that the device is not currently under or entering maintenance.,System
+s2-brdr2,VerifyNTP,success,,Verifies if NTP is synchronised.,System
+s2-brdr2,VerifyReloadCause,success,,Verifies the last reload cause of the device.,System
+s2-brdr2,VerifyVxlanConfigSanity,success,,Verifies there are no VXLAN config-sanity inconsistencies.,VXLAN
 s2-leaf1,VerifyBGPPeerSession,success,,Verifies the session state of BGP peers.,BGP
 s2-leaf1,VerifyRunningConfigDiffs,success,,Verifies there is no difference between the running-config and the startup-config.,Configuration
 s2-leaf1,VerifyZeroTouch,success,,Verifies ZeroTouch is disabled.,Configuration

@@ -5,8 +5,8 @@
 # structured_config 대신 이 cv_device_tags 변수를 바로 읽어 CloudVision에 device tag로 올린다.
 # AVD가 leaf/spine에 자동 생성하는 topology_hint_* 네이밍과 맞춰서 CVP Topology 뷰에서
 # 동일한 체계로 인식되도록 한다.
-# cv_device_tags:
-#   - name: topology_hint_type
-#     value: core
-#   - name: topology_hint_network_type
-#     value: wan
+cv_device_tags:
+  - name: topology_hint_type
+    value: core
+  - name: topology_hint_network_type
+    value: wan

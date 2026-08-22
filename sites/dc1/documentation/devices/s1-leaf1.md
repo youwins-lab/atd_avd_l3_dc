@@ -7,6 +7,10 @@
   - [Management API HTTP](#management-api-http)
 - [Authentication](#authentication)
   - [Enable Password](#enable-password)
+- [Monitor Connectivity](#monitor-connectivity)
+  - [Global Configuration](#global-configuration)
+  - [VRF Configuration](#vrf-configuration)
+  - [Monitor Connectivity Device Configuration](#monitor-connectivity-device-configuration)
 - [MLAG](#mlag)
   - [MLAG Summary](#mlag-summary)
   - [MLAG Device Configuration](#mlag-device-configuration)
@@ -42,6 +46,9 @@
 - [VRF Instances](#vrf-instances)
   - [VRF Instances Summary](#vrf-instances-summary)
   - [VRF Instances Device Configuration](#vrf-instances-device-configuration)
+- [Virtual Source NAT](#virtual-source-nat)
+  - [Virtual Source NAT Summary](#virtual-source-nat-summary)
+  - [Virtual Source NAT Configuration](#virtual-source-nat-configuration)
 
 ## Management
 
@@ -102,6 +109,52 @@ management api http-commands
 ### Enable Password
 
 Enable password has been disabled
+
+## Monitor Connectivity
+
+### Global Configuration
+
+#### Probing Configuration
+
+| Enabled | Interval | Default Interface Set | Address Only |
+| ------- | -------- | --------------------- | ------------ |
+| True | 5 | - | True |
+
+### VRF Configuration
+
+| Name | Description | Default Interface Set | Address Only |
+| ---- | ----------- | --------------------- | ------------ |
+| A | - | - | True |
+
+#### VRF A Configuration
+
+##### Interface Sets
+
+| Name | Interfaces |
+| ---- | ---------- |
+| MONITOR-DIAG | Loopback210 |
+
+##### Host Parameters
+
+| Host Name | Description | IPv4 Address | ICMP Echo Size | Probing Interface Set | Address Only | URL |
+| --------- | ----------- | ------------ | -------------- | --------------------- | ------------ | --- |
+| s2-host2 | - | 10.10.10.22 | - | MONITOR-DIAG | True | - |
+
+### Monitor Connectivity Device Configuration
+
+```eos
+!
+monitor connectivity
+   interval 5
+   no shutdown
+   !
+   vrf A
+      interface set MONITOR-DIAG Loopback210
+      !
+      host s2-host2
+         local-interfaces MONITOR-DIAG address-only
+         ip 10.10.10.22
+```
 
 ## MLAG
 
@@ -172,7 +225,14 @@ vlan internal order ascending range 1006 1199
 | ------- | ---- | ------------ |
 | 10 | ten | - |
 | 20 | twenty | - |
+| 30 | thirty | - |
+| 40 | forty | - |
+| 50 | fifty | - |
+| 100 | onehundred | - |
+| 200 | twohundred | - |
 | 4001 | MLAG_L3_VRF_A | MLAG |
+| 4003 | MLAG_L3_VRF_100 | MLAG |
+| 4004 | MLAG_L3_VRF_200 | MLAG |
 | 4093 | MLAG_L3 | MLAG |
 | 4094 | MLAG | MLAG |
 
@@ -186,8 +246,31 @@ vlan 10
 vlan 20
    name twenty
 !
+vlan 30
+   name thirty
+!
+vlan 40
+   name forty
+!
+vlan 50
+   name fifty
+!
+vlan 100
+   name onehundred
+!
+vlan 200
+   name twohundred
+!
 vlan 4001
    name MLAG_L3_VRF_A
+   trunk group MLAG
+!
+vlan 4003
+   name MLAG_L3_VRF_100
+   trunk group MLAG
+!
+vlan 4004
+   name MLAG_L3_VRF_200
    trunk group MLAG
 !
 vlan 4093
@@ -210,7 +293,7 @@ vlan 4094
 | Interface | Description | Mode | VLANs | Native VLAN | Trunk Group | Channel-Group |
 | --------- | ----------- | ---- | ----- | ----------- | ----------- | ------------- |
 | Ethernet1 | MLAG_s1-leaf2_Ethernet1 | *trunk | *- | *- | *MLAG | 1000 |
-| Ethernet4 | SERVER_s1-host1_Ethernet1 | *trunk | *10,20 | *- | *- | 4 |
+| Ethernet4 | SERVER_s1-host1_Ethernet1 | *trunk | *10,20,100,200 | *- | *- | 4 |
 | Ethernet6 | MLAG_s1-leaf2_Ethernet6 | *trunk | *- | *- | *MLAG | 1000 |
 
 *Inherited from Port-Channel Interface
@@ -264,7 +347,7 @@ interface Ethernet6
 
 | Interface | Description | Mode | VLANs | Native VLAN | Trunk Group | LACP Fallback Timeout | LACP Fallback Mode | MLAG ID | EVPN ESI |
 | --------- | ----------- | ---- | ----- | ----------- | ----------- | --------------------- | ------------------ | ------- | -------- |
-| Port-Channel4 | SERVER_s1-host1 | trunk | 10,20 | - | - | - | - | 4 | - |
+| Port-Channel4 | SERVER_s1-host1 | trunk | 10,20,100,200 | - | - | - | - | 4 | - |
 | Port-Channel1000 | MLAG_s1-leaf2_Port-Channel1000 | trunk | - | - | MLAG | - | - | - | - |
 
 #### Port-Channel Interfaces Device Configuration
@@ -274,7 +357,7 @@ interface Ethernet6
 interface Port-Channel4
    description SERVER_s1-host1
    no shutdown
-   switchport trunk allowed vlan 10,20
+   switchport trunk allowed vlan 10,20,100,200
    switchport mode trunk
    switchport
    mlag 4
@@ -297,6 +380,7 @@ interface Port-Channel1000
 | --------- | ----------- | --- | ---------- |
 | Loopback0 | ROUTER_ID | default | 10.1.0.14/32 |
 | Loopback1 | VXLAN_TUNNEL_SOURCE | default | 10.1.1.14/32 |
+| Loopback210 | Monitor-Connectivity-Diag | A | 10.255.10.14/32 |
 
 ##### IPv6
 
@@ -304,6 +388,7 @@ interface Port-Channel1000
 | --------- | ----------- | --- | -------------- |
 | Loopback0 | ROUTER_ID | default | - |
 | Loopback1 | VXLAN_TUNNEL_SOURCE | default | - |
+| Loopback210 | Monitor-Connectivity-Diag | A | - |
 
 #### Loopback Interfaces Device Configuration
 
@@ -318,6 +403,11 @@ interface Loopback1
    description VXLAN_TUNNEL_SOURCE
    no shutdown
    ip address 10.1.1.14/32
+!
+interface Loopback210
+   description Monitor-Connectivity-Diag
+   vrf A
+   ip address 10.255.10.14/32
 ```
 
 ### VLAN Interfaces
@@ -328,7 +418,14 @@ interface Loopback1
 | --------- | ----------- | --- | --- | -------- |
 | Vlan10 | ten | A | 9014 | False |
 | Vlan20 | twenty | A | 9014 | False |
+| Vlan30 | thirty | A | 9014 | False |
+| Vlan40 | forty | A | 9014 | False |
+| Vlan50 | fifty | A | 9014 | False |
+| Vlan100 | onehundred | 100 | 9014 | False |
+| Vlan200 | twohundred | 200 | 9014 | False |
 | Vlan4001 | MLAG_L3_VRF_A | A | 9214 | False |
+| Vlan4003 | MLAG_L3_VRF_100 | 100 | 9214 | False |
+| Vlan4004 | MLAG_L3_VRF_200 | 200 | 9214 | False |
 | Vlan4093 | MLAG_L3 | default | 9214 | False |
 | Vlan4094 | MLAG | default | 9214 | False |
 
@@ -338,7 +435,14 @@ interface Loopback1
 | --------- | --- | ---------- | ------------------ | ------------------------- | ------ | ------- |
 | Vlan10 | A | - | 10.10.10.1/24 | - | - | - |
 | Vlan20 | A | - | 10.20.20.1/24 | - | - | - |
+| Vlan30 | A | - | 10.30.30.1/24 | - | - | - |
+| Vlan40 | A | - | 10.40.40.1/24 | - | - | - |
+| Vlan50 | A | - | 10.50.50.1/24 | - | - | - |
+| Vlan100 | 100 | - | 10.100.100.1/24 | - | - | - |
+| Vlan200 | 200 | - | 10.200.200.1/24 | - | - | - |
 | Vlan4001 | A | 192.2.2.26/31 | - | - | - | - |
+| Vlan4003 | 100 | 192.4.4.26/31 | - | - | - | - |
+| Vlan4004 | 200 | 192.5.4.26/31 | - | - | - | - |
 | Vlan4093 | default | 192.1.1.26/31 | - | - | - | - |
 | Vlan4094 | default | 192.0.0.26/31 | - | - | - | - |
 
@@ -360,12 +464,61 @@ interface Vlan20
    vrf A
    ip address virtual 10.20.20.1/24
 !
+interface Vlan30
+   description thirty
+   no shutdown
+   mtu 9014
+   vrf A
+   ip address virtual 10.30.30.1/24
+!
+interface Vlan40
+   description forty
+   no shutdown
+   mtu 9014
+   vrf A
+   ip address virtual 10.40.40.1/24
+!
+interface Vlan50
+   description fifty
+   no shutdown
+   mtu 9014
+   vrf A
+   ip address virtual 10.50.50.1/24
+!
+interface Vlan100
+   description onehundred
+   no shutdown
+   mtu 9014
+   vrf 100
+   ip address virtual 10.100.100.1/24
+!
+interface Vlan200
+   description twohundred
+   no shutdown
+   mtu 9014
+   vrf 200
+   ip address virtual 10.200.200.1/24
+!
 interface Vlan4001
    description MLAG_L3_VRF_A
    no shutdown
    mtu 9214
    vrf A
    ip address 192.2.2.26/31
+!
+interface Vlan4003
+   description MLAG_L3_VRF_100
+   no shutdown
+   mtu 9214
+   vrf 100
+   ip address 192.4.4.26/31
+!
+interface Vlan4004
+   description MLAG_L3_VRF_200
+   no shutdown
+   mtu 9214
+   vrf 200
+   ip address 192.5.4.26/31
 !
 interface Vlan4093
    description MLAG_L3
@@ -397,11 +550,18 @@ interface Vlan4094
 | ---- | --- | ---------- | --------------- |
 | 10 | 10010 | - | - |
 | 20 | 10020 | - | - |
+| 30 | 10030 | - | - |
+| 40 | 10040 | - | - |
+| 50 | 10050 | - | - |
+| 100 | 20100 | - | - |
+| 200 | 20200 | - | - |
 
 ##### VRF to VNI and Multicast Group Mappings
 
 | VRF | VNI | Overlay Multicast Group to Encap Mappings |
 | --- | --- | ----------------------------------------- |
+| 100 | 50003 | - |
+| 200 | 50004 | - |
 | A | 50001 | - |
 
 #### VXLAN Interface Device Configuration
@@ -415,6 +575,13 @@ interface Vxlan1
    vxlan udp-port 4789
    vxlan vlan 10 vni 10010
    vxlan vlan 20 vni 10020
+   vxlan vlan 30 vni 10030
+   vxlan vlan 40 vni 10040
+   vxlan vlan 50 vni 10050
+   vxlan vlan 100 vni 20100
+   vxlan vlan 200 vni 20200
+   vxlan vrf 100 vni 50003
+   vxlan vrf 200 vni 50004
    vxlan vrf A vni 50001
 ```
 
@@ -449,6 +616,8 @@ ip virtual-router mac-address 00:1c:73:00:00:01
 | VRF | Routing Enabled |
 | --- | --------------- |
 | default | True |
+| 100 | True |
+| 200 | True |
 | A | True |
 
 #### IP Routing Device Configuration
@@ -456,6 +625,8 @@ ip virtual-router mac-address 00:1c:73:00:00:01
 ```eos
 !
 ip routing
+ip routing vrf 100
+ip routing vrf 200
 ip routing vrf A
 ```
 
@@ -466,6 +637,8 @@ ip routing vrf A
 | VRF | Routing Enabled |
 | --- | --------------- |
 | default | False |
+| 100 | false |
+| 200 | false |
 | A | false |
 | default | false |
 
@@ -545,6 +718,8 @@ ASN Notation: asplain
 | 10.255.0.52 | 65000 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
 | 10.255.0.54 | 65000 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
 | 192.1.1.27 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | default | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - |
+| 192.4.4.27 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | 100 | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - |
+| 192.5.4.27 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | 200 | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - |
 | 192.2.2.27 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | A | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - |
 
 #### Router BGP EVPN Address Family
@@ -563,11 +738,18 @@ ASN Notation: asplain
 | ---- | ------------------- | ----------------- | ------------------- | ------------------- | ------------ |
 | 10 | 10.1.0.14:10010 | 10010:10010 | - | - | learned |
 | 20 | 10.1.0.14:10020 | 10020:10020 | - | - | learned |
+| 30 | 10.1.0.14:10030 | 10030:10030 | - | - | learned |
+| 40 | 10.1.0.14:10040 | 10040:10040 | - | - | learned |
+| 50 | 10.1.0.14:10050 | 10050:10050 | - | - | learned |
+| 100 | 10.1.0.14:20100 | 20100:20100 | - | - | learned |
+| 200 | 10.1.0.14:20200 | 20200:20200 | - | - | learned |
 
 #### Router BGP VRFs
 
 | VRF | Route-Distinguisher | Redistribute | Graceful Restart |
 | --- | ------------------- | ------------ | ---------------- |
+| 100 | 10.1.0.14:50003 | connected | - |
+| 200 | 10.1.0.14:50004 | connected | - |
 | A | 10.1.0.14:50001 | connected | - |
 
 #### Router BGP Device Configuration
@@ -629,6 +811,31 @@ router bgp 65001
       route-target both 10020:10020
       redistribute learned
    !
+   vlan 30
+      rd 10.1.0.14:10030
+      route-target both 10030:10030
+      redistribute learned
+   !
+   vlan 40
+      rd 10.1.0.14:10040
+      route-target both 10040:10040
+      redistribute learned
+   !
+   vlan 50
+      rd 10.1.0.14:10050
+      route-target both 10050:10050
+      redistribute learned
+   !
+   vlan 100
+      rd 10.1.0.14:20100
+      route-target both 20100:20100
+      redistribute learned
+   !
+   vlan 200
+      rd 10.1.0.14:20200
+      route-target both 20200:20200
+      redistribute learned
+   !
    address-family evpn
       neighbor EVPN-OVERLAY-LOCAL-PEERS activate
       route import match-failure action discard
@@ -637,6 +844,26 @@ router bgp 65001
       no neighbor EVPN-OVERLAY-LOCAL-PEERS activate
       neighbor IPV4-UNDERLAY-PEERS activate
       neighbor MLAG-IPV4-UNDERLAY-PEER activate
+   !
+   vrf 100
+      rd 10.1.0.14:50003
+      route-target import evpn 50003:50003
+      route-target export evpn 50003:50003
+      router-id 10.1.0.14
+      update wait-install
+      neighbor 192.4.4.27 peer group MLAG-IPV4-UNDERLAY-PEER
+      neighbor 192.4.4.27 description s1-leaf2_Vlan4003
+      redistribute connected route-map RM-CONN-2-BGP-VRFS
+   !
+   vrf 200
+      rd 10.1.0.14:50004
+      route-target import evpn 50004:50004
+      route-target export evpn 50004:50004
+      router-id 10.1.0.14
+      update wait-install
+      neighbor 192.5.4.27 peer group MLAG-IPV4-UNDERLAY-PEER
+      neighbor 192.5.4.27 description s1-leaf2_Vlan4004
+      redistribute connected route-map RM-CONN-2-BGP-VRFS
    !
    vrf A
       rd 10.1.0.14:50001
@@ -700,6 +927,8 @@ router bfd
 | Sequence | Action |
 | -------- | ------ |
 | 10 | permit 192.2.2.26/31 |
+| 20 | permit 192.4.4.26/31 |
+| 30 | permit 192.5.4.26/31 |
 
 #### Prefix-lists Device Configuration
 
@@ -711,6 +940,8 @@ ip prefix-list PL-LOOPBACKS-EVPN-OVERLAY
 !
 ip prefix-list PL-MLAG-PEER-VRFS
    seq 10 permit 192.2.2.26/31
+   seq 20 permit 192.4.4.26/31
+   seq 30 permit 192.5.4.26/31
 ```
 
 ### Route-maps
@@ -759,11 +990,32 @@ route-map RM-MLAG-PEER-IN permit 10
 
 | VRF Name | IP Routing |
 | -------- | ---------- |
+| 100 | enabled |
+| 200 | enabled |
 | A | enabled |
 
 ### VRF Instances Device Configuration
 
 ```eos
 !
+vrf instance 100
+!
+vrf instance 200
+!
 vrf instance A
+```
+
+## Virtual Source NAT
+
+### Virtual Source NAT Summary
+
+| Source NAT VRF | Source NAT IPv4 Address | Source NAT IPv6 Address |
+| -------------- | ----------------------- | ----------------------- |
+| A | 10.255.10.14 | - |
+
+### Virtual Source NAT Configuration
+
+```eos
+!
+ip address virtual source-nat vrf A address 10.255.10.14
 ```
