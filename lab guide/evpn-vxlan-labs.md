@@ -4,6 +4,16 @@
 
 > 아래 예시들은 이 저장소의 실제 AVD 6.3.0 스키마(`sites/dc{n}/group_vars/dc{n}_fabric.yml`, `dc{n}_fabric_services.yml`의 현재 내용)를 그대로 따릅니다. 값을 넣기 전에 해당 파일을 먼저 열어 기존 항목의 들여쓰기와 구조를 확인하세요.
 
+> **배포 전에 설정을 미리 검증하고 싶다면** — 각 랩에서 `make build_dc{n}`을 끝낸 직후, 장비에 배포하기 전에
+> Batfish로 설정만 가지고 사전 검증(pre-flight)을 돌릴 수 있습니다. MTU 불일치, 중복 라우터 ID, BGP 세션이
+> 붙지 않는 설정, VRF 격리 위반 같은 문제를 배포 전에 잡아냅니다. 설치부터 랩별 검증 항목까지는
+> [`lab guide/batfish-preflight-guide.md`](batfish-preflight-guide.md)를 참고하세요. 실제로 이 절차를
+> 적용해 배포·ANTA 검증·호스트 통신까지 확인한 기록은
+> [`lab guide/batfish-avd-anta-verification-report.md`](batfish-avd-anta-verification-report.md)에 있습니다.
+>
+> 랩별 권장 흐름: `group_vars` 수정 → `make build_dc{n}` → **`python3 batfish/preflight.py --labs <랩번호>`**
+> → `make deploy_dc{n}_*` → `make verify_dc{n}`
+
 <br>
 <br>
 

@@ -66,6 +66,13 @@ All commands run from the repo root and take `-i sites/dc{1,2}/inventory.yml` im
   endpoints from **static** configs in `sites/dc{n}/host_configs/`.
 - Initial bring-up order: DCI configs → `build_dc{n}` → `deploy_dc{n}_cvp` → host configs (see README "초기
   설정 빌드 및 배포" for the full numbered sequence).
+- `make bf_install` / `make bf_start` / `make bf_stop` / `make bf_status` — manage the local Batfish service
+  (see "Pre-deploy validation with Batfish" below).
+- `make preflight` (or `preflight_dc1` / `preflight_dc2`) — run `batfish/preflight.py`: builds a Batfish snapshot
+  from `intended/configs/` + `dci_configs/` + `host_configs/` and validates it **without touching any device**.
+  `make preflight_selftest` injects faults into snapshot copies to prove the checks still catch them.
+- Recommended per-lab loop: edit `group_vars` → `make build_dc{n}` → `make preflight` → `make deploy_dc{n}_*` →
+  `make verify_dc{n}`.
 
 There is no test suite; correctness is checked by re-running `make build_dc{n}` and diffing the generated
 `intended/configs/*.cfg` / `documentation/`, and by the ANTA runs described above.
@@ -153,6 +160,60 @@ so it repurposes live DC1 fabric devices (`s1-spine1`, `s1-spine2`, `s1-leaf1`, 
 EVPN-VXLAN/MLAG/BGP config in the process, breaking DC1's fabric until `make build_dc1` +
 `make deploy_dc1_cvp` (+ `make deploy_dc1_host_cvp`) redeploys it. See `sites/srv6-dc1/README.md` for the
 physical-cabling-to-topology mapping and full caveats before touching this.
+
+## Pre-deploy validation with Batfish
+
+`batfish/` holds a config-only validation layer that runs *between* `make build_dc{n}` and any deploy. It is
+documented for lab users in `lab guide/batfish-preflight-guide.md`; a full recorded run (pre-flight → deploy →
+ANTA → host pings) is in `lab guide/batfish-avd-anta-verification-report.md`. Batfish reads configs and never
+connects to a device, so it is safe to run against a live fabric. The non-obvious parts:
+
+- **No Docker here.** Batfish normally ships as `docker run batfish/allinone`, but the ATD programmability IDE is
+  itself a container with no Docker daemon. `batfish/install_batfish.sh` therefore pulls the same image's layers
+  straight from the registry API into `../batfish-service/rootfs/` (a sibling of this repo, like the
+  `ansible-avd`/`ansible-cvp` collections) and runs `allinone-bundle.jar` on the host JVM (OpenJDK 17, apt).
+  `pybatfish` is installed from the wheel bundled *inside that image* so client and service versions match
+  exactly. `batfish/batfishctl.sh` start/stops it on `localhost:9996`.
+- **Snapshots are normalized copies; `sites/` originals are never modified.** `batfish/bf_lib.py` copies configs
+  into `batfish/snapshots/<name>/configs/` and (a) prepends `hostname <name>` to the `dci_configs`/`host_configs`
+  fragments, which are `eos_config` snippets with no hostname line, (b) normalizes `interface ethernet1` to
+  `interface Ethernet1`, and (c) prepends `! device: <hostname> (cEOS-lab, EOS-4.36.0F)` to **every** file.
+  That last one is load-bearing: without the Arista `show running-config` header Batfish detects the configs as
+  CISCO_IOS, the spine files fail to parse entirely, and EOS-only syntax (`vrf instance`, `neighbor X peer group
+  Y`) is rejected everywhere.
+- **Layer-1 topology is derived from interface descriptions.** Without it Batfish infers adjacency from subnets
+  and reports paths that have no cable. `bf_lib.build_layer1()` parses the `<node>_<Interface>` suffix that both
+  AVD (`P2P_s1-spine1_Ethernet2`, `MLAG_s1-leaf2_Ethernet1`, `SERVER_s1-host1_Ethernet1`) and the hand-written
+  static configs (`P2P_LINK_TO_s1-brdr1_Ethernet4`, `DCI_P2P_LINK_TO_s2-core1_Ethernet4`,
+  `PortChan1_s1-leaf1_Ethernet4`) put in descriptions, yielding 58 links. The `s{n}-core1`↔`s{n}-core2`
+  port-channel members carry no peer info in config at all and are hardcoded in `L1_OVERRIDES`. Note
+  `_iter_interfaces()` cannot use indentation to find block ends — the static config fragments are unindented.
+- **Two allowlists encode "this is fine by design".** `preflight.py`'s `KNOWN_UNSUPPORTED` lists EOS syntax
+  Batfish cannot model (`rd evpn domain remote`, `monitor connectivity`, `ip address virtual source-nat`, …) so
+  that only *new* parse warnings surface; the duplicate-IP check exempts anycast gateways (`ip address virtual`)
+  and the VTEP Loopback1 address that AVD deliberately shares across each MLAG pair (peers derived from
+  `description MLAG_<peer>_...`, VTEP interface from `vxlan source-interface`).
+- **What it cannot see.** Whether a config was actually deployed (a real run found the DCI cores unconfigured
+  while every pre-flight check passed — ANTA caught it), EVPN route re-origination behavior (checked only as
+  config text), and same-subnet host-to-host VXLAN forwarding, which Batfish shortcuts as L2-accepted — so
+  cross-DC host pings still have to be verified for real after deploy.
+- **Control-plane checks alone are not enough, hence `check_vtep_reachability`.** EVPN peering rides Loopback0
+  (router ID) while VXLAN encapsulation rides Loopback1 (VTEP), so blackholing just a VTEP address leaves every
+  BGP session Established and ANTA green while all cross-DC host traffic dies. That check runs one Batfish
+  `reachability` query (`actions="failure"`, ~0.3s) over every (VTEP node → VTEP IP) pair instead of N
+  traceroutes. A single representative leaf↔leaf path — what Lab 3's check traces — is *not* sufficient: it
+  passed while the fabric was fully broken.
+- **A staged failure scenario lives in `dc1_fabric.yml`.** The `BrdrLeafs` group carries a commented-out
+  `structured_config.static_routes` blackholing `10.1.1.102/32` (the remote DC's border-leaf VTEP) to `null0`.
+  Uncommenting it is `lab guide/batfish-preflight-guide.md` §7-A; it breaks all DC1↔DC2 host traffic while
+  leaving BGP/EVPN and ANTA reporting healthy. Note AVD 6.0.0 renamed `destination_address_prefix` to `prefix`
+  — the old key fails schema validation at `make build_dc1`. Reverting needs an explicit
+  `no ip route 10.1.1.102/32 Null0` on `s1-brdr1`/`s1-brdr2` if it was deployed, because `eos_config` with
+  `src` only adds missing lines and never removes extra ones.
+- `batfish/selftest.py` (`make preflight_selftest`) re-inits snapshot copies with five injected faults
+  (evpn_gateway removed, one-sided MTU, duplicate router ID, DCI link shutdown, edge VTEP blackhole) and asserts
+  the matching check flips to FAIL. Run it after changing any check.
+- `batfish/snapshots/` and `batfish/reports/` are regenerated per run and gitignored.
 
 ## Conventions
 
