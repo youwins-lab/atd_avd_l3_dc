@@ -65,3 +65,35 @@ verify_dc1: ## Run ANTA validation against DC1 EOS devices without pushing confi
 .PHONY: verify_dc2
 verify_dc2: ## Run ANTA validation against DC2 EOS devices without pushing config
 	ansible-playbook playbooks/verify_dc2.yml -i sites/dc2/inventory.yml
+
+.PHONY: bf_install
+bf_install: ## Install the Batfish service (JRE + allinone image + pybatfish)
+	./batfish/install_batfish.sh
+
+.PHONY: bf_start
+bf_start: ## Start the Batfish service
+	./batfish/batfishctl.sh start
+
+.PHONY: bf_stop
+bf_stop: ## Stop the Batfish service
+	./batfish/batfishctl.sh stop
+
+.PHONY: bf_status
+bf_status: ## Show Batfish service status
+	./batfish/batfishctl.sh status
+
+.PHONY: preflight
+preflight: ## Batfish pre-deploy validation of dc1+dc2 intended configs (all lab scenarios)
+	python3 batfish/preflight.py --dc all --labs all
+
+.PHONY: preflight_dc1
+preflight_dc1: ## Batfish pre-deploy validation of DC1 only
+	python3 batfish/preflight.py --dc dc1 --labs all
+
+.PHONY: preflight_dc2
+preflight_dc2: ## Batfish pre-deploy validation of DC2 only
+	python3 batfish/preflight.py --dc dc2 --labs all
+
+.PHONY: preflight_selftest
+preflight_selftest: ## Inject faults into snapshot copies to prove the pre-flight checks catch them
+	python3 batfish/selftest.py

@@ -4,3 +4,11 @@
 sites/dc1/group_vars/dc1/vault.yml
 sites/dc2/group_vars/dc2/vault.yml
 sites/srv6-dc1/group_vars/dc1_srv6/vault.yml
+
+# Batfish: 스냅샷/리포트는 매 실행마다 다시 생성되는 산출물
+batfish/snapshots/
+batfish/reports/
+
+# Python 캐시
+__pycache__/
+*.pyc
