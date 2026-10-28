@@ -1,0 +1,89 @@
+# eos-mcp-server inventory (read-only MCP access to the ATD lab switches).
+# Mirrors sites/dc{1,2}/inventory.yml; CVP is excluded (not an EOS eAPI target).
+# Password comes from $EOS_MCP_PASSWORD, set by mcp/run-eos-mcp.sh from the lab passphrase.
+version: 1
+vars:
+  ansible_user: arista
+  ansible_network_os: eos
+  mcp_password_env: EOS_MCP_PASSWORD
+  mcp_validate_certs: false
+
+hosts:
+  s1-spine1:
+    ansible_host: 192.168.0.10
+  s1-spine2:
+    ansible_host: 192.168.0.11
+  s1-leaf1:
+    ansible_host: 192.168.0.12
+  s1-leaf2:
+    ansible_host: 192.168.0.13
+  s1-leaf3:
+    ansible_host: 192.168.0.14
+  s1-leaf4:
+    ansible_host: 192.168.0.15
+  s1-brdr1:
+    ansible_host: 192.168.0.100
+  s1-brdr2:
+    ansible_host: 192.168.0.101
+  s1-core1:
+    ansible_host: 192.168.0.102
+  s1-core2:
+    ansible_host: 192.168.0.103
+  s1-host1:
+    ansible_host: 192.168.0.16
+  s1-host2:
+    ansible_host: 192.168.0.17
+  s2-spine1:
+    ansible_host: 192.168.0.20
+  s2-spine2:
+    ansible_host: 192.168.0.21
+  s2-leaf1:
+    ansible_host: 192.168.0.22
+  s2-leaf2:
+    ansible_host: 192.168.0.23
+  s2-leaf3:
+    ansible_host: 192.168.0.24
+  s2-leaf4:
+    ansible_host: 192.168.0.25
+  s2-brdr1:
+    ansible_host: 192.168.0.200
+  s2-brdr2:
+    ansible_host: 192.168.0.201
+  s2-core1:
+    ansible_host: 192.168.0.202
+  s2-core2:
+    ansible_host: 192.168.0.203
+  s2-host1:
+    ansible_host: 192.168.0.26
+  s2-host2:
+    ansible_host: 192.168.0.27
+
+groups:
+  dc1:
+    hosts: [s1-spine1, s1-spine2, s1-leaf1, s1-leaf2, s1-leaf3, s1-leaf4, s1-brdr1, s1-brdr2, s1-core1, s1-core2, s1-host1, s1-host2]
+  dc1_spines:
+    hosts: [s1-spine1, s1-spine2]
+  dc1_fabric:
+    hosts: [s1-spine1, s1-spine2, s1-leaf1, s1-leaf2, s1-leaf3, s1-leaf4, s1-brdr1, s1-brdr2]
+  dc1_leafs:
+    hosts: [s1-leaf1, s1-leaf2, s1-leaf3, s1-leaf4]
+  dc1_brdrs:
+    hosts: [s1-brdr1, s1-brdr2]
+  dc1_dci:
+    hosts: [s1-core1, s1-core2]
+  dc1_hosts:
+    hosts: [s1-host1, s1-host2]
+  dc2:
+    hosts: [s2-spine1, s2-spine2, s2-leaf1, s2-leaf2, s2-leaf3, s2-leaf4, s2-brdr1, s2-brdr2, s2-core1, s2-core2, s2-host1, s2-host2]
+  dc2_spines:
+    hosts: [s2-spine1, s2-spine2]
+  dc2_fabric:
+    hosts: [s2-spine1, s2-spine2, s2-leaf1, s2-leaf2, s2-leaf3, s2-leaf4, s2-brdr1, s2-brdr2]
+  dc2_leafs:
+    hosts: [s2-leaf1, s2-leaf2, s2-leaf3, s2-leaf4]
+  dc2_brdrs:
+    hosts: [s2-brdr1, s2-brdr2]
+  dc2_dci:
+    hosts: [s2-core1, s2-core2]
+  dc2_hosts:
+    hosts: [s2-host1, s2-host2]

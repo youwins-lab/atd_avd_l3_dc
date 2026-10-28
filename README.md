@@ -391,6 +391,7 @@ deploy_dc1_eapi: ## Deploy DC2 Spine/Leaf AVD generated configs via eAPI
 
 - Claude Code: `claude-code-guide.md`
 - Codex CLI: `codex-cli-guide.md`
+- EOS MCP Server (Claude Code에서 장비 `show` 명령 조회, 읽기 전용): `eos-mcp-server-guide.md`
 
 <br>
 <br>

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "eos": {
+      "type": "stdio",
+      "command": "./mcp/run-eos-mcp.sh",
+      "args": [
+        "serve"
+      ],
+      "env": {}
+    }
+  }
+}

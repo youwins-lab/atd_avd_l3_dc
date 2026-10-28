@@ -1,0 +1,8 @@
+# eos-mcp-server runtime config. Paths are resolved by mcp/run-eos-mcp.sh.
+version: 1
+actor: atd-lab
+readTimeoutMs: 10000
+overallOperationTimeoutMs: 60000
+deviceConcurrency: 8
+maxReadTargets: 50
+maxShowCommandsPerRequest: 5
