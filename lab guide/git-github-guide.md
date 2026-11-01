@@ -127,6 +127,23 @@ git push                                        # 내 GitHub 저장소로 업로
 
 > `intended/configs`, `intended/structured_configs`, `documentation`처럼 `make build_dc{n}`이 자동 생성하는 파일도 git으로 추적되고 있다면 같이 diff를 확인하고 커밋하는 것이 좋습니다 — 리뷰어가 실제 배포될 설정 변경을 바로 볼 수 있기 때문입니다.
 
+### PR로 올리면 자동 검증된다
+
+`main`에 직접 push하지 않고 브랜치 → PR로 올리면 GitHub Actions가 자동으로 검사합니다.
+
+```bash
+git switch -c add-vlan30             # 작업 브랜치
+git add -A && git commit -m "Add VLAN 30 to dc1 fabric"
+git push -u origin add-vlan30        # 출력된 링크로 PR 생성
+```
+
+| PR 체크 결과 | 의미 |
+|---|---|
+| `AVD build + drift check` ✘ | 생성 파일(`intended/`, `documentation/`)을 커밋하지 않음 |
+| `Batfish preflight` ✘ | 배포하면 장애가 날 설정 |
+
+자세한 내용: `ci-pipeline-guide.md`
+
 <br>
 
 ## 7. 자주 만나는 오류와 대처

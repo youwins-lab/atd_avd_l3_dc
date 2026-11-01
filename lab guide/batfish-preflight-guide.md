@@ -663,165 +663,64 @@ BGP가 학습한 ECMP 경로로 돌아오고, 호스트 통신도 모두 0% 손�
 
 ## 7-B. 실습 — DCI 경계 ACL: ping은 되는데 VXLAN만 막히는 장애
 
-§7-A는 **경로**를 망가뜨렸습니다. 이번에는 경로는 그대로 두고 **ACL**로 같은 종류의 장애를 만듭니다.
-현장에서 훨씬 자주 일어나는 유형입니다. 보안팀 요청으로 DCI 경계 ACL을 "꼭 필요한 것만" 남기도록
-조이다가 VXLAN 한 줄을 빠뜨리는 식입니다.
+> **핵심** — ACL이 ICMP·BGP는 통과시키고 VXLAN(UDP 4789)만 막으면, ping도 되고 BGP도 붙는데
+> DC 간 호스트 통신만 끊긴다. ICMP 기반 검사로는 안 보이고 **UDP 4789로 검사해야** 잡힌다.
 
-### 무엇이 DCI를 건너는가
+### DCI를 건너는 트래픽 = ACL이 허용해야 할 것
 
-ACL을 쓰려면 먼저 DCI(core ↔ Border Leaf) 링크를 지나는 트래픽을 전부 알아야 합니다.
-이 패브릭에서는 다섯 종류뿐입니다.
-
-| 트래픽 | 프로토콜/포트 | 어디서 어디로 |
-|---|---|---|
-| 언더레이 eBGP | TCP 179 | Border Leaf ↔ core (`172.16.255.x/31`, single-hop, BFD 없음) |
-| EVPN Gateway 피어링 | TCP 179 | `s1-brdr` Loopback0 ↔ `s2-brdr` Loopback0 (`ebgp-multihop 15`) |
-| EVPN 피어 BFD | UDP 4784 (multihop BFD) | `EVPN-OVERLAY-REMOTE-PEERS bfd` |
-| VXLAN 데이터 평면 | UDP 4789 | `10.1.1.2` ↔ `10.1.1.102` (Border Leaf VTEP 간) |
-| 트러블슈팅 | ICMP | — |
-
-DC 간 호스트 트래픽은 전부 VXLAN 안에 캡슐화되어 지나가므로 ACL에 호스트 대역을 적을 필요가 없습니다.
-
-### 1) 정상 정책 적용 — PASS
-
-`sites/dc1/group_vars/dc1_fabric.yml`의 `BrdrLeafs` 블록에서 §7-B 주석 블록 전체를 해제합니다.
-
-```yaml
-        ip_access_lists:
-          - name: DCI-EDGE-IN
-            counters_per_entry: true
-            entries:
-              - {sequence: 10, action: permit, protocol: icmp, source: any, destination: any}
-              - {sequence: 20, action: permit, protocol: tcp, source: any, destination: any, destination_ports_match: eq, destination_ports: [bgp]}
-              - {sequence: 30, action: permit, protocol: tcp, source: any, source_ports_match: eq, source_ports: [bgp], destination: any}
-              - {sequence: 40, action: permit, protocol: udp, source: any, destination: any, destination_ports_match: eq, destination_ports: ["4784"]}
-              - {sequence: 50, action: permit, protocol: udp, source: any, destination: any, destination_ports_match: eq, destination_ports: ["4789"]}
-              - {sequence: 1000, action: deny, protocol: ip, source: any, destination: any}
-        ethernet_interfaces:
-          - {name: Ethernet4, access_group_in: DCI-EDGE-IN}
-          - {name: Ethernet5, access_group_in: DCI-EDGE-IN}
-```
-
-> `core_interfaces.p2p_links`에는 ACL 키가 없어서 `structured_config`로 넣습니다.
-> `ethernet_interfaces`는 이름 기준으로 AVD가 만든 인터페이스 설정에 **병합**되므로 `ip access-group`
-> 한 줄만 추가됩니다. 마지막 deny에 `log`를 붙이면 cEOS가 "data-plane에서 지원하지 않는 옵션"
-> 경고를 내므로 빼 두었습니다.
-
-```bash
-make build_dc1 && make preflight
-```
-
-```
-  [✔] BGP 세션 수립(모델)       176개 세션 모두 ESTABLISHED
-  [✔] VTEP 간 도달성           ICMP: VTEP 6개 × 출발 노드 12대 = 72개 조합 모두 도달 가능
-  [✔] VXLAN(UDP 4789) 도달성   UDP 4789: VTEP 6개 × 출발 노드 12대 = 72개 조합 모두 도달 가능
-  [✔] ACL 라인 도달성          IP ACL 2개(장비별)의 모든 라인이 매칭 가능
-  [✔] DCI ACL 정책            4개 인터페이스에 'DCI-EDGE-IN' 적용, 필수 허용 5종 PERMIT / 관리 프로토콜 3종 DENY 확인
-```
-
-배포(`make deploy_dc1_cvp`)한 뒤 장비에서 카운터를 보면 위 표의 트래픽이 실제로 각 줄에 매칭됩니다.
-cEOS도 인바운드 ACL을 실제로 적용합니다.
-
-```
-s1-brdr1# show ip access-lists DCI-EDGE-IN
-IP Access List DCI-EDGE-IN
-        counters per-entry
-        10 permit icmp any any
-        20 permit tcp any any eq bgp [match 19 packets, 0:00:01 ago]
-        30 permit tcp any eq bgp any [match 7 packets, 0:00:20 ago]
-        40 permit udp any any eq multihop-bfd [match 1315 packets, 0:00:01 ago]
-        50 permit udp any any eq 4789 [match 692 packets, 0:00:01 ago]
-        1000 deny ip any any
-        Configured on Ingress: Et4-5
-        Active on     Ingress: Et4-5
-```
-
-호스트 간 cross-DC ping(`ping vrf 10/20/100/200`, 4대 × 4 VRF = 16건)도 전부 성공합니다.
-
-### 2) 장애 주입 — seq 50 한 줄만 주석
-
-```yaml
-              - {sequence: 40, ...  destination_ports: ["4784"]}
-              # - {sequence: 50, ... destination_ports: ["4789"]}     <- VXLAN 허용 줄 누락
-```
-
-```bash
-make build_dc1 && make preflight
-```
-
-```
-  [✔] BGP 세션 수립(모델)       176개 세션 모두 ESTABLISHED                         <- 제어 평면 정상
-  [✔] VTEP 간 도달성           ICMP: VTEP 6개 × 출발 노드 12대 = 72개 조합 모두 도달 가능 <- ping도 정상
-  [✘] VXLAN(UDP 4789) 도달성   UDP 4789: VTEP 6개 중 도달 불가 조합 6건 — VXLAN 터널 단절
-  [✔] ACL 라인 도달성          IP ACL 2개(장비별)의 모든 라인이 매칭 가능
-  [✘] DCI ACL 정책            4개 인터페이스 중 정책 위반 2건
-        s1-brdr1 DCI-EDGE-IN: VXLAN (UDP 4789) 기대 PERMIT / 실제 DENY (1000 deny ip any any)
-        s1-brdr2 DCI-EDGE-IN: VXLAN (UDP 4789) 기대 PERMIT / 실제 DENY (1000 deny ip any any)
-
-PASS 9 / FAIL 2          (--labs none 기준)
-```
-
-**ICMP로 보는 VTEP 검사는 PASS**입니다. 이 검사만 있었다면 놓쳤을 장애이고, 그래서 UDP 4789 검사를
-따로 둡니다. DCI ACL 정책 검사는 어느 장비의 어느 줄(`1000 deny`)에 걸리는지까지 알려 줍니다.
-
-### 3) 배포 후 — 실제 랩에서도 예측과 똑같이 동작합니다
-
-검증용으로 이 상태를 실제로 배포해 보면(ATD, cEOS 4.36.0.1F에서 확인):
-
-```
-s1-brdr1# show bgp evpn summary
-  s2-brdr1    10.1.0.102 4 65199   ...  00:58:04 Estab   72  72  120     <- EVPN 세션 정상
-
-s1-brdr1# ping 10.1.1.102 source Loopback1
-3 packets transmitted, 3 received, 0% packet loss                       <- VTEP 간 ping 정상
-
-s1-brdr1# show ip access-lists DCI-EDGE-IN
-        40 permit udp any any eq multihop-bfd [match 4214 packets, ...]
-        1000 deny ip any any [match 128 packets, 0:00:00 ago]          <- VXLAN이 여기서 버려짐
-
-s1-host1 vrf 10  -> 10.10.10.21    0 received                           <- cross-DC 16건 전부 실패
-```
-
-`show bgp evpn summary`, VTEP ping, ANTA의 BGP 검사로는 보이지 않고, `1000 deny` 카운터가
-올라가는 것을 직접 봐야만 원인을 알 수 있습니다. Batfish는 이것을 **배포 전에** 잡았습니다.
-
-### 4) 원상 복구
-
-블록 전체를 다시 주석 처리하고 빌드·배포합니다. CloudVision 배포(`make deploy_dc1_cvp`)는 설정 전체를
-교체하므로 ACL과 `ip access-group`이 장비에서 함께 지워집니다(`eos_config`로 배포했다면
-`no ip access-list DCI-EDGE-IN`과 인터페이스별 `no ip access-group DCI-EDGE-IN in`을 직접 넣어야 합니다).
-
-```bash
-make build_dc1 && make preflight      # PASS 29 / FAIL 0 / SKIP 2 (ACL 검사 두 개는 SKIP)
-make deploy_dc1_cvp
-```
-
-### 참고 — 또 하나의 ACL 실수: 라인 순서
-
-`make preflight_selftest`의 7번째 케이스는 정상 ACL의 seq 15에 `deny tcp any any`를 끼워 넣습니다.
-문법상 정상이라 장비는 그대로 받아들이지만 뒤의 BGP 허용 줄 두 개가 절대 매칭되지 않습니다.
-
-```
-  [✘] ACL 라인 도달성     절대 매칭되지 않는 ACL 라인 2건 (앞 라인에 가려짐)
-  [✘] BGP 세션 수립(모델)  16/176 세션이 수립 불가
-  [✘] DCI ACL 정책       BGP 접속 (dst TCP 179) 기대 PERMIT / 실제 DENY (15 deny tcp any any)
-```
-
-이번에는 BGP가 죽으므로 언더레이 경로가 빠지고, 연쇄로 VTEP 도달성까지 FAIL이 됩니다.
-**ACL 라인 도달성**은 이런 순서 실수를 원인 그대로(어느 줄이 어느 줄을 가렸는지) 짚어 줍니다.
-
-### 이 실습이 말하는 것
-
-| 확인 방법 | VXLAN 줄 누락을 잡았는가 |
+| 트래픽 | 포트 |
 |---|---|
-| Batfish `VXLAN(UDP 4789) 도달성` / `DCI ACL 정책` (배포 전) | ✔ 원인 장비·ACL 줄까지 지목 |
-| Batfish `VTEP 간 도달성` (ICMP) | ✘ PASS — ICMP는 허용되므로 |
-| `show bgp evpn summary` / ANTA BGP 검사 | ✘ 세션 `Estab` |
-| VTEP 간 `ping` | ✘ 성공 |
-| 호스트 `ping` | ✔ 100% 손실 — **이미 장애가 난 뒤** |
+| 언더레이 eBGP (brdr ↔ core), EVPN 피어링 (brdr ↔ 원격 brdr) | TCP 179 |
+| EVPN 피어 BFD | UDP 4784 |
+| VXLAN 데이터 평면 | UDP 4789 |
+| 트러블슈팅 | ICMP |
 
-같은 "도달성" 검사라도 **어떤 프로토콜로 보느냐**에 따라 결과가 달라집니다. ACL이 있는 경로는
-실제로 흐를 트래픽의 프로토콜/포트 그대로 검증해야 합니다.
+### 실습 순서
+
+`sites/dc1/group_vars/dc1_fabric.yml` → `BrdrLeafs`의 §7-B 주석 블록(`DCI-EDGE-IN`)을 사용합니다.
+
+| 단계 | 할 일 | `make build_dc1 && make preflight` 결과 |
+|---|---|---|
+| 1. 정상 정책 | 블록 전체 주석 해제 | 전부 PASS (`DCI ACL 정책` PASS) |
+| 2. 장애 주입 | `sequence: 50`(4789) 한 줄만 다시 주석 | `VXLAN(UDP 4789) 도달성` ✘ · `DCI ACL 정책` ✘ / **`VTEP 간 도달성`(ICMP) ✔ · BGP ✔** |
+| 3. 복구 | 블록 전체 다시 주석 | PASS 29 / SKIP 2 |
+
+2단계에서 Batfish가 원인 위치까지 알려 줍니다.
+
+```
+  [✘] DCI ACL 정책   4개 인터페이스 중 정책 위반 2건
+        s1-brdr1 DCI-EDGE-IN: VXLAN (UDP 4789) 기대 PERMIT / 실제 DENY (1000 deny ip any any)
+```
+
+> 실장비로 확인하려면 각 단계 뒤에 `make deploy_dc1_cvp`. CVP 배포는 설정 전체를 교체하므로
+> 3단계 배포로 ACL이 장비에서 깨끗이 지워집니다.
+
+### 실장비 결과 (ATD, cEOS 4.36.0.1F) — Batfish 예측과 일치
+
+| 확인 항목 | 정상 정책 | seq 50 누락 |
+|---|---|---|
+| `show bgp evpn summary` (s1-brdr1 ↔ s2-brdr1) | Estab | **Estab** |
+| VTEP ping `ping 10.1.1.102 source Loopback1` | 성공 | **성공** |
+| ACL 카운터 | `50 permit udp ... 4789` 증가 | `1000 deny` 증가 |
+| cross-DC 호스트 ping (4대 × VRF 4개) | 16/16 | **0/16** |
+
+굵은 칸이 함정입니다 — 평소 쓰는 점검 방법은 전부 정상으로 보입니다.
+
+### 참고 — 라인 순서 실수 (selftest 7번)
+
+정상 ACL의 seq 15에 `deny tcp any any`를 넣으면 뒤의 BGP 허용 줄이 가려집니다.
+→ `ACL 라인 도달성` ✘ (가려진 줄 2건) · BGP 세션 16개 ✘ · 연쇄로 VTEP 도달성 ✘
+
+### 정리
+
+| 도구 | VXLAN 줄 누락을 잡는가 |
+|---|---|
+| Batfish `VXLAN(UDP 4789) 도달성` / `DCI ACL 정책` | ✔ 배포 전, 원인 줄까지 |
+| Batfish `VTEP 간 도달성`(ICMP), `show bgp`, ANTA BGP, VTEP ping | ✘ |
+| 호스트 ping | ✔ 단, 장애가 난 뒤 |
+
+> 구현 메모: `core_interfaces`에는 ACL 키가 없어 `structured_config`로 넣습니다(`ethernet_interfaces`는
+> 이름 기준 병합). deny 줄의 `log`는 cEOS가 미지원 경고를 내서 뺐습니다.
 
 <br>
 
