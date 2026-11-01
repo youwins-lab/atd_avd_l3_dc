@@ -228,6 +228,7 @@ def build_model(data):
 NW, NH, GAP = 128, 80, 84            # 기본 박스 크기, 같은 줄 박스 간격 (양쪽 포트 배지 + 선이 들어갈 폭)
 PORT_W, PORT_H = 30, 16              # 포트 배지 크기 (박스 가장자리에 붙는 인터페이스 이름)
 Y = {"spine": 40, "row": 310, "host": 570, "core1": 175, "core2": 445}
+MARGIN = 40                           # 그림 좌우 바깥 여백 (배경 구역 밖으로 26px)
 CORE_GAP = 300                        # DC1 core ↔ DC2 core 사이 (DCI 라벨 자리)
 
 
@@ -300,7 +301,7 @@ def layout(model, W):
         nb = [l["b"] if l["a"] == nm else l["a"] for l in model["links"] if nm in (l["a"], l["b"])]
         cs = [pos[x][0] + W[x] / 2 for x in nb if x in pos]
         pos[nm] = ((sum(cs) / len(cs) if cs else 0) - W[nm] / 2, _y_of(model, nm))
-    return pos, x_dc2 + dc_w, Y["host"] + NH + 34, dc_w, x_core1, x_core2, core_w
+    return pos, x_dc2 + dc_w, Y["host"] + NH + 34, dc_w, x_core1, x_core2, core_w   # 폭 = 내용 끝 (여백은 viewBox에서)
 
 
 def ports(model, pos, W):
@@ -534,7 +535,7 @@ def render_html(model):
                                                 "lo0", "lo1", "bgp_est", "bgp_total", "bgp_down", "mlag", "remote_vteps")}
         detail[n["name"]]["ifs"] = ifs
     return TEMPLATE.format(
-        collected=esc(model["collected_at"]), width=f"{width:.0f}", height=f"{height:.0f}", svg=svg,
+        collected=esc(model["collected_at"]), vx=-MARGIN, vw=f"{width + 2 * MARGIN:.0f}", height=f"{height:.0f}", svg=svg,
         n_dev=len(nodes), n_ok=ok, n_links=len(model["links"]), oper_up=oper_up, l3_up=up, l3_total=len(l3),
         dci_up=sum(1 for l in dci if l["bgp"] == "up"), dci_total=len(dci), n_tun=len(model["tunnels"]),
         bgp_e=bgp_e, bgp_t=bgp_t, rows=rows, sv_table=sv_table, n_svc=len(model["svc"]), lrows=lrows, dci_rows=dci_rows, trows=trows,
@@ -624,7 +625,7 @@ td.bad,.s-down{{color:var(--down);font-weight:600}} .s-up{{color:var(--up)}} .m{
 <span class="sp"></span><span class="hint">장비를 클릭하면 연결만 강조하고 아래에 상세가 열립니다</span>
 <button type="button" id="z-fit">화면 맞춤</button><button type="button" id="z-100">원본 크기</button>
 </div>
-<div class="scroll" id="wrap"><svg id="topo" viewBox="-16 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="fabric topology">{svg}</svg></div>
+<div class="scroll" id="wrap"><svg id="topo" viewBox="{vx} 0 {vw} {height}" width="{vw}" height="{height}" role="img" aria-label="fabric topology">{svg}</svg></div>
 <div class="legend"><span><i style="border-color:var(--up)"></i>L3 P2P · BGP Established</span>
 <span><i style="border-color:var(--dci);border-top-width:5px"></i>DCI (core↔core)</span>
 <span><i style="border-color:var(--l2);border-top-style:dashed"></i>L2 · MLAG peer · Port-Channel 멤버</span>
