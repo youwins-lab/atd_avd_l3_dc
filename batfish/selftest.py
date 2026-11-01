@@ -64,6 +64,42 @@ def break_edge_vtep_route(cfgdir: Path):
             "ip route 0.0.0.0/0 192.168.0.1\nip route 10.1.1.102/32 Null0", 1))
 
 
+GOOD_DCI_ACL = [
+    "10 permit icmp any any",
+    "20 permit tcp any any eq bgp",
+    "30 permit tcp any eq bgp any",
+    "40 permit udp any any eq 4784",
+    "50 permit udp any any eq 4789",
+    "1000 deny ip any any",
+]
+
+
+def _apply_dci_acl(cfgdir: Path, entries: list[str]):
+    """s1-brdr1/2의 DCI 방향(Ethernet4/5) 인바운드에 DCI-EDGE-IN ACL을 건다."""
+    acl = "ip access-list DCI-EDGE-IN\n" + "".join(f"   {e}\n" for e in entries) + "!\n"
+    for name in ("s1-brdr1", "s1-brdr2"):
+        cfg = cfgdir / f"{name}.cfg"
+        text = cfg.read_text()
+        text = re.sub(r"(interface Ethernet[45]\n(?:   .*\n)*?   ip address \S+\n)",
+                      r"\g<1>   ip access-group DCI-EDGE-IN in\n", text)
+        text = text.replace("\nend", "\n" + acl + "end", 1)
+        cfg.write_text(text)
+
+
+def break_dci_acl_no_vxlan(cfgdir: Path):
+    """DCI ACL을 '조이다가' VXLAN(UDP 4789) 허용 줄을 빠뜨린다.
+
+    ICMP와 BGP는 허용되므로 ping·BGP·ICMP 기반 VTEP 검사는 모두 정상으로 보이고,
+    원격 DC로 가는 VXLAN 패킷만 Border Leaf에서 버려진다.
+    """
+    _apply_dci_acl(cfgdir, [e for e in GOOD_DCI_ACL if "4789" not in e])
+
+
+def break_dci_acl_shadowed(cfgdir: Path):
+    """seq 15에 'deny tcp any any'를 끼워 넣어 뒤의 BGP 허용 줄을 가린다(순서 실수)."""
+    _apply_dci_acl(cfgdir, GOOD_DCI_ACL[:1] + ["15 deny tcp any any"] + GOOD_DCI_ACL[1:])
+
+
 CASES = [
     ("Lab 3 evpn_gateway 미적용", break_evpn_gateway,
      ["EVPN Gateway 원격 피어링", "EVPN 경로 재발신 표시"], [3]),
@@ -71,6 +107,10 @@ CASES = [
     ("leaf 라우터 ID 중복", break_duplicate_ip, ["중복 IP"], []),
     ("DCI core 간 링크 shutdown", break_dci_link, ["BGP 세션 수립(모델)"], [3]),
     ("Edge(Border Leaf)에서 원격 VTEP 블랙홀", break_edge_vtep_route, ["VTEP 간 도달성"], [3]),
+    ("DCI ACL에서 VXLAN(UDP 4789) 누락", break_dci_acl_no_vxlan,
+     ["VXLAN(UDP 4789) 도달성", "DCI ACL 정책"], []),
+    ("DCI ACL 라인 순서 실수(BGP 허용 줄이 가려짐)", break_dci_acl_shadowed,
+     ["ACL 라인 도달성", "DCI ACL 정책", "BGP 세션 수립(모델)"], []),
 ]
 
 

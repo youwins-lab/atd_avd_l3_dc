@@ -213,9 +213,19 @@ connects to a device, so it is safe to run against a live fabric. The non-obviou
   — the old key fails schema validation at `make build_dc1`. Reverting needs an explicit
   `no ip route 10.1.1.102/32 Null0` on `s1-brdr1`/`s1-brdr2` if it was deployed, because `eos_config` with
   `src` only adds missing lines and never removes extra ones.
-- `batfish/selftest.py` (`make preflight_selftest`) re-inits snapshot copies with five injected faults
-  (evpn_gateway removed, one-sided MTU, duplicate router ID, DCI link shutdown, edge VTEP blackhole) and asserts
-  the matching check flips to FAIL. Run it after changing any check.
+- **ACL checks.** `check_vxlan_udp` repeats the VTEP query with UDP 4789 because an ACL that permits ICMP+BGP
+  but not VXLAN keeps the ICMP check green. `check_acl_lines` (filterLineReachability) flags shadowed lines;
+  `check_dci_acl_policy` runs `testFilters` on any inbound ACL on border-leaf core-facing interfaces
+  (description `_s<n>-core<n>_`): ICMP/BGP both directions/BFD multihop 4784/VXLAN 4789 must PERMIT,
+  SSH/Telnet/SNMP must DENY. Both ACL checks SKIP when no ACL exists (the default), so baseline is PASS 29 / SKIP 2.
+  The `DCI-EDGE-IN` block in `BrdrLeafs` `structured_config` (commented by default) is §7-B; `core_interfaces`
+  has no ACL key, hence `structured_config` (`ethernet_interfaces` merges by name). Do not add `log` to the deny
+  line: cEOS warns it is unsupported in the data plane. Verified live: with seq 50 removed, EVPN stays Estab and
+  VTEP ping works but all cross-DC host pings fail.
+- `batfish/selftest.py` (`make preflight_selftest`) re-inits snapshot copies with seven injected faults
+  (evpn_gateway removed, one-sided MTU, duplicate router ID, DCI link shutdown, edge VTEP blackhole,
+  DCI ACL without VXLAN, DCI ACL with a shadowing `deny tcp`) and asserts the matching checks flip to FAIL.
+  Run it after changing any check.
 - `batfish/snapshots/` and `batfish/reports/` are regenerated per run and gitignored.
 
 ## CI (GitHub Actions)
