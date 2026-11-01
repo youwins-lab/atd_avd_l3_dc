@@ -39,6 +39,8 @@
 - [Filters](#filters)
   - [Prefix-lists](#prefix-lists)
   - [Route-maps](#route-maps)
+- [ACL](#acl)
+  - [IP Access-lists](#ip-access-lists)
 - [VRF Instances](#vrf-instances)
   - [VRF Instances Summary](#vrf-instances-summary)
   - [VRF Instances Device Configuration](#vrf-instances-device-configuration)
@@ -250,8 +252,8 @@ vlan 4094
 | --------- | ----------- | ------------- | ---------- | --- | --- | -------- | ------ | ------- |
 | Ethernet2 | P2P_s1-spine1_Ethernet8 | - | 10.255.0.13/31 | default | 9214 | False | - | - |
 | Ethernet3 | P2P_s1-spine2_Ethernet8 | - | 10.255.0.15/31 | default | 9214 | False | - | - |
-| Ethernet4 | P2P_s1-core1_Ethernet3 | - | 172.16.255.4/31 | default | 9214 | False | - | - |
-| Ethernet5 | P2P_s1-core2_Ethernet3 | - | 172.16.255.6/31 | default | 9214 | False | - | - |
+| Ethernet4 | P2P_s1-core1_Ethernet3 | - | 172.16.255.4/31 | default | 9214 | False | DCI-EDGE-IN | - |
+| Ethernet5 | P2P_s1-core2_Ethernet3 | - | 172.16.255.6/31 | default | 9214 | False | DCI-EDGE-IN | - |
 
 #### Ethernet Interfaces Device Configuration
 
@@ -282,6 +284,7 @@ interface Ethernet4
    mtu 9214
    no switchport
    ip address 172.16.255.4/31
+   ip access-group DCI-EDGE-IN in
 !
 interface Ethernet5
    description P2P_s1-core2_Ethernet3
@@ -289,6 +292,7 @@ interface Ethernet5
    mtu 9214
    no switchport
    ip address 172.16.255.6/31
+   ip access-group DCI-EDGE-IN in
 !
 interface Ethernet6
    description MLAG_s1-brdr1_Ethernet6
@@ -987,6 +991,23 @@ route-map RM-CONN-2-BGP-VRFS permit 20
 route-map RM-MLAG-PEER-IN permit 10
    description Make routes learned over MLAG Peer-link less preferred on spines to ensure optimal routing
    set origin incomplete
+```
+
+## ACL
+
+### IP Access-lists
+
+#### IP Access-lists Device Configuration
+
+```eos
+!
+ip access-list DCI-EDGE-IN
+   counters per-entry
+   10 permit icmp any any
+   20 permit tcp any any eq bgp
+   30 permit tcp any eq bgp any
+   40 permit udp any any eq 4784
+   1000 deny ip any any
 ```
 
 ## VRF Instances

@@ -51,6 +51,7 @@ ethernet_interfaces:
   shutdown: false
   mtu: 9214
   ip_address: 172.16.255.0/31
+  access_group_in: DCI-EDGE-IN
   metadata:
     peer: s1-core1
     peer_interface: Ethernet2
@@ -62,6 +63,7 @@ ethernet_interfaces:
   shutdown: false
   mtu: 9214
   ip_address: 172.16.255.2/31
+  access_group_in: DCI-EDGE-IN
   metadata:
     peer: s1-core2
     peer_interface: Ethernet2
@@ -69,6 +71,44 @@ ethernet_interfaces:
   switchport:
     enabled: false
 hostname: s1-brdr1
+ip_access_lists:
+- name: DCI-EDGE-IN
+  counters_per_entry: true
+  entries:
+  - sequence: 10
+    action: permit
+    protocol: icmp
+    source: any
+    destination: any
+  - sequence: 20
+    action: permit
+    protocol: tcp
+    source: any
+    destination: any
+    destination_ports_match: eq
+    destination_ports:
+    - bgp
+  - sequence: 30
+    action: permit
+    protocol: tcp
+    source: any
+    destination: any
+    source_ports_match: eq
+    source_ports:
+    - bgp
+  - sequence: 40
+    action: permit
+    protocol: udp
+    source: any
+    destination: any
+    destination_ports_match: eq
+    destination_ports:
+    - '4784'
+  - sequence: 1000
+    action: deny
+    protocol: ip
+    source: any
+    destination: any
 ip_igmp_snooping:
   globally_enabled: true
 ip_routing: true

@@ -118,19 +118,19 @@ l3leaf:
         # 거기서 seq 50(VXLAN) 한 줄만 다시 주석 처리하면 "ping·BGP는 멀쩡한데 VXLAN만 막히는"
         # 장애가 된다 → preflight의 'VXLAN(UDP 4789) 도달성' / 'DCI ACL 정책' 검사가 잡는다.
         # 자세한 절차는 `lab guide/batfish-preflight-guide.md` §7-B 참고.
-        # ip_access_lists:
-        #   - name: DCI-EDGE-IN
-        #     counters_per_entry: true
-        #     entries:
-        #       - {sequence: 10, action: permit, protocol: icmp, source: any, destination: any}
-        #       - {sequence: 20, action: permit, protocol: tcp, source: any, destination: any, destination_ports_match: eq, destination_ports: [bgp]}
-        #       - {sequence: 30, action: permit, protocol: tcp, source: any, source_ports_match: eq, source_ports: [bgp], destination: any}
-        #       - {sequence: 40, action: permit, protocol: udp, source: any, destination: any, destination_ports_match: eq, destination_ports: ["4784"]}
-        #       - {sequence: 50, action: permit, protocol: udp, source: any, destination: any, destination_ports_match: eq, destination_ports: ["4789"]}
-        #       - {sequence: 1000, action: deny, protocol: ip, source: any, destination: any}
-        # ethernet_interfaces:
-        #   - {name: Ethernet4, access_group_in: DCI-EDGE-IN}
-        #   - {name: Ethernet5, access_group_in: DCI-EDGE-IN}
+        ip_access_lists:
+          - name: DCI-EDGE-IN
+            counters_per_entry: true
+            entries:
+              - {sequence: 10, action: permit, protocol: icmp, source: any, destination: any}
+              - {sequence: 20, action: permit, protocol: tcp, source: any, destination: any, destination_ports_match: eq, destination_ports: [bgp]}
+              - {sequence: 30, action: permit, protocol: tcp, source: any, source_ports_match: eq, source_ports: [bgp], destination: any}
+              - {sequence: 40, action: permit, protocol: udp, source: any, destination: any, destination_ports_match: eq, destination_ports: ["4784"]}
+              # - {sequence: 50, action: permit, protocol: udp, source: any, destination: any, destination_ports_match: eq, destination_ports: ["4789"]}
+              - {sequence: 1000, action: deny, protocol: ip, source: any, destination: any}
+        ethernet_interfaces:
+          - {name: Ethernet4, access_group_in: DCI-EDGE-IN}
+          - {name: Ethernet5, access_group_in: DCI-EDGE-IN}
         # ---------------------------------------------------------------------------
       filter:
         tenants: [ATD_DC, New-Tenant]
