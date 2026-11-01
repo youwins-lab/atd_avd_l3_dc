@@ -2,7 +2,7 @@
 
 이 랩들의 목표는 AVD가 Day 2 이후의 네트워크 운영을 얼마나 쉽게 만들어주는지 보여주는 것입니다. 아래 여섯 개의 랩을 진행합니다.
 
-> 아래 예시들은 이 저장소의 실제 AVD 6.3.0 스키마(`sites/dc{n}/group_vars/dc{n}_fabric.yml`, `dc{n}_fabric_services.yml`의 현재 내용)를 그대로 따릅니다. 값을 넣기 전에 해당 파일을 먼저 열어 기존 항목의 들여쓰기와 구조를 확인하세요.
+> 아래 예시들은 이 저장소의 실제 AVD 6.4.0 스키마(`sites/dc{n}/group_vars/dc{n}_fabric.yml`, `dc{n}_fabric_services.yml`의 현재 내용)를 그대로 따릅니다. 값을 넣기 전에 해당 파일을 먼저 열어 기존 항목의 들여쓰기와 구조를 확인하세요.
 
 > **배포 전에 설정을 미리 검증하고 싶다면** — 각 랩에서 `make build_dc{n}`을 끝낸 직후, 장비에 배포하기 전에
 > Batfish로 설정만 가지고 사전 검증(pre-flight)을 돌릴 수 있습니다. MTU 불일치, 중복 라우터 ID, BGP 세션이
@@ -292,13 +292,27 @@ grep "domain remote" sites/dc1/intended/configs/s1-brdr1.cfg
 
 `neighbor EVPN-OVERLAY-REMOTE-PEERS domain remote`(피어그룹 자체를 원격 도메인으로 표시)와, 각 VLAN 아래 `rd evpn domain remote ...`/`route-target import export evpn domain remote ...` 줄이 있어야 합니다. 이게 바로 §6에서 설명한 "도메인 정보를 남겨서 루프를 막는" 표시입니다. `s{n}-leaf*.cfg`에는 이 줄이 없다는 것도 함께 확인해 보세요 — 재발신은 Border Leaf만 하는 일입니다.
 
-5) 스티칭 경계를 직접 확인합니다 — DC2가 실제로 보는 "원격 VTEP"이 DC1의 실제 leaf가 아니라 `s1-brdr1`/`s1-brdr2`인지 검증합니다. `s2-leaf1`(또는 `s2-leaf2`)에 로그인해서:
+5) 스티칭 경계를 직접 확인합니다 — DC2 leaf가 실제로 보는 "원격 VTEP"이 DC1의 실제 leaf가 아니라 **자기 DC의 Border Leaf**(`s2-brdr1`/`s2-brdr2`)인지 검증합니다. `s2-leaf1`(또는 `s2-leaf2`)에 로그인해서:
 
 ```
 show bgp evpn route-type mac-ip vni 10010
 ```
 
-`s1-host1`이 붙어 있는 VLAN 10(VNI 10010)의 Type-2 경로를 찾아 next-hop을 확인하세요. next-hop은 `10.1.1.2`(`s1-brdr1`의 Loopback1) 또는 `10.1.1.4`(`s1-brdr2`의 Loopback1)여야 합니다 — `s1-leaf1`의 실제 Loopback1인 `10.1.1.14`가 아닙니다. DC2 입장에서는 DC1의 실제 leaf VTEP을 전혀 모르고, Border Leaf만 "원격 VTEP"으로 보인다는 것이 §6에서 말한 stitching(스티칭)의 실체입니다.
+`s1-host1`(`10.10.10.11`)이 붙어 있는 VLAN 10(VNI 10010)의 Type-2 경로를 찾아 RD와 next-hop을 확인하세요. 상세 정보는 `show bgp evpn route-type mac-ip 10.10.10.11 detail`로 볼 수 있습니다.
+
+```
+BGP routing table entry for mac-ip 001c.73c0.c616 10.10.10.11, Route Distinguisher: 10.1.0.102:10010
+  65100 65199 65099 65000 65001
+    10.1.1.102 from 10.1.0.112 (10.1.0.112)
+```
+
+- **RD `10.1.0.102:10010` / `10.1.0.104:10010`** — `s2-brdr1`/`s2-brdr2`가 DC1에서 받은 경로를 **자기 이름으로 재발신**한 것입니다(원래 경로의 RD는 `s1-leaf1`의 `10.1.0.14:10010`).
+- **next-hop `10.1.1.102`** — `s2-brdr1`/`s2-brdr2`가 공유하는 Loopback1(VTEP)입니다. `s1-leaf1`의 실제 VTEP인 `10.1.1.14`도, `s1-brdr1`/`s1-brdr2`의 VTEP인 `10.1.1.2`도 아닙니다.
+- `show vxlan vtep`에도 원격 VTEP으로 `10.1.1.102`(로컬 Border Leaf)와 같은 DC의 다른 leaf pair만 보이고, DC1의 VTEP은 하나도 보이지 않습니다.
+
+즉 DC2 leaf는 DC1의 VTEP을 전혀 모르고, **자기 도메인의 Border Leaf만 "원격 VTEP"으로 봅니다**. 패킷은 `s2-leaf → s2-brdr`(DC2 VXLAN) → `s2-brdr → s1-brdr`(DCI 구간 VXLAN, `10.1.1.102 ↔ 10.1.1.2`) → `s1-brdr → s1-leaf`(DC1 VXLAN)처럼 도메인 경계마다 다시 캡슐화됩니다. 이것이 §6에서 말한 stitching(스티칭)의 실체입니다. DC1 쪽에서 `s1-leaf1`에 로그인해 `show bgp evpn route-type mac-ip 10.10.10.21 detail`을 실행하면 대칭으로 next-hop이 `10.1.1.2`(`s1-brdr1`/`s1-brdr2`)로 보입니다.
+
+> 이 저장소의 이전 버전 문서에는 next-hop이 `10.1.1.2`/`10.1.1.4`(DC1 Border Leaf)로 보인다고 적혀 있었지만, 실제 장비(AVD 6.4.0 배포 후 확인)에서는 위와 같이 **로컬 DC의 Border Leaf VTEP**이 next-hop입니다. 또한 `s1-brdr1`/`s1-brdr2`는 MLAG 페어로 VTEP `10.1.1.2` 하나를 공유하므로 `10.1.1.4`라는 VTEP은 존재하지 않습니다(`10.1.0.4`는 `s1-brdr2`의 Loopback0입니다).
 
 6) 실제 트래픽으로 검증합니다. 호스트 쪽 VLAN 10 SVI는 로컬 VRF `10`에 있으므로, `s1-host1`에서:
 
@@ -438,6 +452,13 @@ make deploy_dc2_dci_cvp
 
 두 플레이북 모두 `cv_run_change_control: false`이므로 configlet과 태그가 함께 CVP에 push되지만, change control은 `pending approval` 상태로 남습니다.
 
+CVP UI에서 직접 승인하지 않고 change control까지 한 번에 실행하고 싶다면, extra-vars로 값을 덮어쓰면 됩니다(extra-vars가 플레이북 task의 `vars:`보다 우선순위가 높습니다).
+
+```bash
+ansible-playbook playbooks/deploy_dc1_dci_cvp.yml -i sites/dc1/inventory.yml -e cv_run_change_control=true
+ansible-playbook playbooks/deploy_dc2_dci_cvp.yml -i sites/dc2/inventory.yml -e cv_run_change_control=true
+```
+
 4) CVP에서 태그가 반영됐는지 확인합니다. **Device config와 달리 태그는 change control 승인을 기다리지 않고 즉시 적용됩니다.** Tag는 디바이스에 push하는 대상이 아니라 CVP 자체의 인벤토리/메타데이터라서, `cv_deploy`가 워크스페이스를 빌드·제출(`cv_submit_workspace: true`, 기본값)하는 순간 CVP 쪽에 바로 커밋되기 때문입니다 — device config처럼 디바이스에 실제로 뭔가를 밀어넣는 단계가 아니라 change control 대상이 아닌 것입니다. CVP UI의 device inventory에서 `s1-core1`/`s1-core2`/`s2-core1`/`s2-core2`를 열어 Tags 탭에 `topology_hint_type=core`, `topology_hint_network_type=wan`이 붙어 있는지 확인하세요.
 
 5) (선택) 배포 전에 Ansible이 값을 제대로 읽는지 미리 확인하고 싶다면 아래처럼 조회할 수 있습니다.
@@ -456,7 +477,7 @@ ansible -i sites/dc1/inventory.yml dc1_dci -m debug -a "var=cv_device_tags"
 
 ## Lab 6 - AVD로 Connectivity Monitoring 설정 (s1-host1 ↔ s2-host2)
 
-지금까지의 랩은 사람이 직접 `ping`을 실행해서 EVPN/VXLAN 스트레치를 검증했습니다. 이 랩에서는 EOS의 **Connectivity Monitor** 기능(`monitor connectivity`)을 AVD로 구성해, leaf 스위치가 원격 호스트를 주기적으로 자동 프로빙(ICMP)하고 그 결과를 `show monitor connectivity`로 상시 확인할 수 있게 만듭니다. AVD 6.3.0 스키마의 `monitor_connectivity` 키(`eos_designs`/`eos_cli_config_gen` 모두 지원)를 `structured_config`로 얹는 방식입니다.
+지금까지의 랩은 사람이 직접 `ping`을 실행해서 EVPN/VXLAN 스트레치를 검증했습니다. 이 랩에서는 EOS의 **Connectivity Monitor** 기능(`monitor connectivity`)을 AVD로 구성해, leaf 스위치가 원격 호스트를 주기적으로 자동 프로빙(ICMP)하고 그 결과를 `show monitor connectivity`로 상시 확인할 수 있게 만듭니다. AVD 6.4.0 스키마의 `monitor_connectivity` 키(`eos_designs`/`eos_cli_config_gen` 모두 지원)를 `structured_config`로 얹는 방식입니다.
 
 > **모니터링 대상**: `s1-host1`(dc1, `10.10.10.11`)과 `s2-host2`(dc2, `10.10.10.22`)를 서로 반대쪽 DC에서 감시하도록 구성합니다 — dc1의 `LeafPair1`(`s1-leaf1`/`s1-leaf2`, 원래 `s1-host1`이 붙어 있는 leaf pair)이 `s2-host2`를, dc2의 `LeafPair2`(`s2-leaf3`/`s2-leaf4`, 원래 `s2-host2`가 붙어 있는 leaf pair)가 `s1-host1`을 서로 감시합니다. 이렇게 하면 두 leaf pair가 "내 로컬 호스트는 정상인데, 상대편 DC의 호스트까지 도달 가능한가"를 지속적으로 확인하는 구조가 됩니다.
 >

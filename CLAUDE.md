@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-An Arista AVD (Ansible Validated Designs) 6.3.0 proof-of-concept: two independent L3LS EVPN-VXLAN datacenter
+An Arista AVD (Ansible Validated Designs) 6.4.0 proof-of-concept: two independent L3LS EVPN-VXLAN datacenter
 fabrics (`dc1`, `dc2`) deployed via Ansible + CloudVision (CVP), stretched over a DCI so the same tenant VLANs
 (10/20, subnets `10.10.10.0/24` and `10.20.20.0/24`) exist in both DCs. `s1-*` devices belong to `sites/dc1`,
 `s2-*` devices belong to `sites/dc2`. It runs inside Arista's ATD (Arista Test Drive) programmability IDE.
@@ -13,13 +13,15 @@ fabrics (`dc1`, `dc2`) deployed via Ansible + CloudVision (CVP), stretched over 
 
 ```bash
 python3 -m pip install --upgrade \
-  "pyavd==6.3.0" \
-  "pyavd-utils==0.0.6" \
+  "pyavd==6.4.0" \
+  "pyavd-utils==0.0.7" \
   "python-socks[asyncio]>=2.7.2" \
-  "anta==1.8.0" \
+  "anta==1.10.0" \
   "distlib>=0.3.9"
-ansible-galaxy collection install arista.avd:==6.3.0
+ansible-galaxy collection install arista.avd:==6.4.0
 ```
+
+`pyavd` 6.4.0 pins `pyavd-utils==0.0.7` exactly — keep that pin in sync when bumping AVD, or pip refuses to resolve.
 
 Lab credentials must be injected before anything will authenticate against the switches/CVP. `group_vars/dc1/main.yml`,
 `group_vars/dc2/main.yml`, `group_vars/dc1_srv6/main.yml` all set `ansible_password: "{{ vault_ansible_password }}"` —
@@ -49,11 +51,12 @@ All commands run from the repo root and take `-i sites/dc{1,2}/inventory.yml` im
   against the `dc{n}_fabric` inventory group. Regenerates `sites/dc{n}/intended/configs/*.cfg`,
   `sites/dc{n}/intended/structured_configs/*.yml`, and `sites/dc{n}/documentation/**/*.md`. Run this any time
   a `group_vars/dc{n}_*.yml` file changes.
-- `make deploy_dc1_cvp` / `make deploy_dc2_cvp` — push the AVD-generated configs to CVP as configlets. DC1
-  sets `cv_run_change_control: true` (change control auto-created and executed); DC2 sets it `false`
-  (configlets upload but the change control must be created/approved manually in the CVP UI) — this asymmetry
-  is intentional, to demonstrate both CVP workflows side by side. The same true/false split exists between
-  `deploy_dc1_dci_cvp.yml` (true) and `deploy_dc2_dci_cvp.yml` (false).
+- `make deploy_dc1_cvp` / `make deploy_dc2_cvp` — push the AVD-generated configs to CVP as configlets. Both
+  set `cv_run_change_control: true` (change control auto-created and executed), as do the `deploy_dc{n}_host_cvp.yml`
+  playbooks. `deploy_dc1_dci_cvp.yml` / `deploy_dc2_dci_cvp.yml` set it `false` (configlets + tags upload, the change
+  control stays pending in the CVP UI); to execute it without touching the UI, override with
+  `ansible-playbook playbooks/deploy_dc{n}_dci_cvp.yml -i sites/dc{n}/inventory.yml -e cv_run_change_control=true`
+  (extra-vars beat the task-level `vars:`).
 - `make deploy_dc1_eapi` / `make deploy_dc2_eapi` — bypass CVP, push AVD-generated configs directly via eAPI,
   then run `arista.avd.anta_runner` (catalogs in `sites/dc{n}/anta/avd_catalogs/`, reports written to
   `sites/dc{n}/anta/reports/`) to validate state.
@@ -171,7 +174,7 @@ connects to a device, so it is safe to run against a live fabric. The non-obviou
 - **No Docker here.** Batfish normally ships as `docker run batfish/allinone`, but the ATD programmability IDE is
   itself a container with no Docker daemon. `batfish/install_batfish.sh` therefore pulls the same image's layers
   straight from the registry API into `../batfish-service/rootfs/` (a sibling of this repo, like the
-  `ansible-avd`/`ansible-cvp` collections) and runs `allinone-bundle.jar` on the host JVM (OpenJDK 17, apt).
+  `ansible-avd`/`ansible-cvp` collections) and runs `allinone-bundle.jar` on a host JVM. The current `latest` jar needs Java 21+ (class file 65), Debian 12 apt only has 17, and the image's bundled JRE needs glibc 2.38, so `install_batfish.sh` downloads a portable Temurin 25 JRE into `../batfish-service/jre/` and `batfishctl.sh` prefers it.
   `pybatfish` is installed from the wheel bundled *inside that image* so client and service versions match
   exactly. `batfish/batfishctl.sh` start/stops it on `localhost:9996`.
 - **Snapshots are normalized copies; `sites/` originals are never modified.** `batfish/bf_lib.py` copies configs

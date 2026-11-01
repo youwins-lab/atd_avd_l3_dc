@@ -15,20 +15,20 @@
 
 | Total Tests | ✅&nbsp;Success | ⏭️&nbsp;Skipped | ❌&nbsp;Failure | ❗&nbsp;Error |
 | :- | :- | :- | :- | :- |
-| 252 | 172 | 56 | 24 | 0 |
+| 252 | 180 | 56 | 16 | 0 |
 
 ### 🔌 Summary Totals Device Under Test <a id="summary-totals-device-under-test"></a>
 
 | Device | Total Tests | ✅&nbsp;Success | ⏭️&nbsp;Skipped | ❌&nbsp;Failure | ❗&nbsp;Error | Categories Skipped | Categories Failed |
 | :- | :- | :- | :- | :- | :- | :- | :- |
-| **s2-brdr1** | 33 | 23 | 7 | 3 | 0 | Hardware | Logging, System |
-| **s2-brdr2** | 33 | 23 | 7 | 3 | 0 | Hardware | Logging, System |
-| **s2-leaf1** | 33 | 23 | 7 | 3 | 0 | Hardware | Logging, System |
-| **s2-leaf2** | 33 | 23 | 7 | 3 | 0 | Hardware | Logging, System |
-| **s2-leaf3** | 33 | 23 | 7 | 3 | 0 | Hardware | Logging, System |
-| **s2-leaf4** | 33 | 23 | 7 | 3 | 0 | Hardware | Logging, System |
-| **s2-spine1** | 27 | 17 | 7 | 3 | 0 | Hardware | Logging, System |
-| **s2-spine2** | 27 | 17 | 7 | 3 | 0 | Hardware | Logging, System |
+| **s2-brdr1** | 33 | 24 | 7 | 2 | 0 | Hardware | Logging, System |
+| **s2-brdr2** | 33 | 24 | 7 | 2 | 0 | Hardware | Logging, System |
+| **s2-leaf1** | 33 | 24 | 7 | 2 | 0 | Hardware | Logging, System |
+| **s2-leaf2** | 33 | 24 | 7 | 2 | 0 | Hardware | Logging, System |
+| **s2-leaf3** | 33 | 24 | 7 | 2 | 0 | Hardware | Logging, System |
+| **s2-leaf4** | 33 | 24 | 7 | 2 | 0 | Hardware | Logging, System |
+| **s2-spine1** | 27 | 18 | 7 | 2 | 0 | Hardware | Logging, System |
+| **s2-spine2** | 27 | 18 | 7 | 2 | 0 | Hardware | Logging, System |
 
 ### 🗂️ Summary Totals Per Category <a id="summary-totals-per-category"></a>
 
@@ -43,37 +43,29 @@
 | **MLAG** | 18 | 18 | 0 | 0 | 0 |
 | **Routing** | 8 | 8 | 0 | 0 | 0 |
 | **STP** | 8 | 8 | 0 | 0 | 0 |
-| **System** | 56 | 40 | 0 | 16 | 0 |
+| **System** | 56 | 48 | 0 | 8 | 0 |
 | **VXLAN** | 6 | 6 | 0 | 0 | 0 |
 
 ## 🧪 Test Results <a id="test-results"></a>
 
 | Device | Categories | Test | Description | Result | Messages |
 | :- | :- | :- | :- | :- | :- |
-| s2-brdr1 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Aug 22 10:07:59 8e6f891e1e05 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
-| s2-brdr1 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ❌&nbsp;Failure | Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77%<br>Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77% |
-| s2-brdr1 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.97% |
-| s2-brdr2 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Aug 22 10:08:04 11849ba866d0 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
-| s2-brdr2 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ❌&nbsp;Failure | Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77%<br>Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77% |
-| s2-brdr2 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.56% |
-| s2-leaf1 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Aug 22 10:07:39 cf7e62cc7539 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> Aug 22 10:10:21 cf7e62cc7539 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.110 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:37 cf7e62cc7539 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.110 (VRF default AS 65100) 6/7 (Cease/connection collision resolution) 0 bytes <br> <br> |
-| s2-leaf1 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ❌&nbsp;Failure | Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77%<br>Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77% |
-| s2-leaf1 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.63% |
-| s2-leaf2 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Aug 22 10:07:42 ff43fd3a93ec NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
-| s2-leaf2 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ❌&nbsp;Failure | Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77%<br>Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77% |
-| s2-leaf2 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.99% |
-| s2-leaf3 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Aug 22 10:07:47 c931482da3ca NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> Aug 22 10:10:28 c931482da3ca Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.112 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:28 c931482da3ca Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.110 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:45 s2-leaf3 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.112 (VRF default AS 65100) 6/7 (Cease/connection collision resolution) 0 bytes <br> <br> |
-| s2-leaf3 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ❌&nbsp;Failure | Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77%<br>Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77% |
-| s2-leaf3 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.60% |
-| s2-leaf4 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Aug 22 10:07:49 2fc0a650a0db NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> Aug 22 10:10:17 2fc0a650a0db Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.255.1.210 (VRF default AS 65100) 6/7 (Cease/connection collision resolution) 0 bytes <br> Aug 22 10:10:32 2fc0a650a0db Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.110 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:32 2fc0a650a0db Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.112 (VRF default AS 65100) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> <br> |
-| s2-leaf4 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ❌&nbsp;Failure | Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77%<br>Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77% |
-| s2-leaf4 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.52% |
-| s2-spine1 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Aug 22 10:07:32 faaea75c03b7 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> Aug 22 10:10:21 s2-spine1 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.114 (VRF default AS 65101) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:28 s2-spine1 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.115 (VRF default AS 65102) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:32 s2-spine1 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.117 (VRF default AS 65102) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:37 s2-spine1 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.114 (VRF default AS 65101) 6/7 (Cease/connection collision resolution) 0 bytes <br> <br> |
-| s2-spine1 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ❌&nbsp;Failure | Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77%<br>Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77% |
-| s2-spine1 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.97% |
-| s2-spine2 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Aug 22 10:07:36 8b4c1c537292 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> Aug 22 10:10:17 s2-spine2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.255.1.211 (VRF default AS 65102) 6/7 (Cease/connection collision resolution) 0 bytes <br> Aug 22 10:10:28 s2-spine2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.115 (VRF default AS 65102) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:32 s2-spine2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.117 (VRF default AS 65102) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes<br> Aug 22 10:10:45 s2-spine2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.1.0.115 (VRF default AS 65102) 6/7 (Cease/connection collision resolution) 0 bytes <br> <br> |
-| s2-spine2 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ❌&nbsp;Failure | Mount point: overlay          60G   46G   15G  77% / - Higher disk space utilization - Expected: 75% Actual: 77%<br>Mount point: /dev/sda2        60G   46G   15G  77% /mnt/flash - Higher disk space utilization - Expected: 75% Actual: 77% |
-| s2-spine2 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.98% |
+| s2-brdr1 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Nov  1 07:18:29 3c6974d1edc0 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
+| s2-brdr1 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.93% |
+| s2-brdr2 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Nov  1 07:18:30 8ff2e4330143 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
+| s2-brdr2 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.89% |
+| s2-leaf1 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Nov  1 07:18:06 4dd52e20cc28 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
+| s2-leaf1 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.92% |
+| s2-leaf2 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Nov  1 07:18:10 de1e601ec438 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
+| s2-leaf2 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.96% |
+| s2-leaf3 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Nov  1 07:18:13 38995d322457 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
+| s2-leaf3 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.89% |
+| s2-leaf4 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Nov  1 07:18:17 13d2cb4a45a6 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
+| s2-leaf4 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.89% |
+| s2-spine1 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Nov  1 07:18:01 2932f0953674 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
+| s2-spine1 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.92% |
+| s2-spine2 | Logging | VerifyLoggingErrors | Verifies there are no syslog messages with a severity of ERRORS or higher. | ❌&nbsp;Failure | Device has reported syslog messages with a severity of ERRORS or higher:<br>Nov  1 07:18:04 e90d062fc1e4 NorCalInit: %HARDWARE-0-SYSTEM_IDENTIFICATION_FAILED: Failed to identify this system<br> <br> |
+| s2-spine2 | System | VerifyMemoryUtilization | Verifies whether the memory utilization is below 75%. | ❌&nbsp;Failure | Device has reported a high memory usage - Expected: < 75% Actual: 91.91% |
 | s2-brdr1 | Hardware | VerifyEnvironmentCooling | Verifies the status of power supply fans and all fan trays. | ⏭️&nbsp;Skipped | VerifyEnvironmentCooling test is not supported on cEOSLab |
 | s2-brdr1 | Hardware | VerifyEnvironmentPower | Verifies the power supplies state and input voltage. | ⏭️&nbsp;Skipped | VerifyEnvironmentPower test is not supported on cEOSLab |
 | s2-brdr1 | Hardware | VerifyEnvironmentSystemCooling | Verifies the device's system cooling status. | ⏭️&nbsp;Skipped | VerifyEnvironmentSystemCooling test is not supported on cEOSLab |
@@ -149,6 +141,7 @@
 | s2-brdr1 | STP | VerifySTPCounters | Verifies there is no errors in STP BPDU packets. | ✅&nbsp;Success | - |
 | s2-brdr1 | System | VerifyAgentLogs | Verifies there are no agent crash reports. | ✅&nbsp;Success | - |
 | s2-brdr1 | System | VerifyCoredump | Verifies there are no core dump files. | ✅&nbsp;Success | - |
+| s2-brdr1 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ✅&nbsp;Success | - |
 | s2-brdr1 | System | VerifyMaintenance | Verifies that the device is not currently under or entering maintenance. | ✅&nbsp;Success | - |
 | s2-brdr1 | System | VerifyNTP | Verifies if NTP is synchronised. | ✅&nbsp;Success | - |
 | s2-brdr1 | System | VerifyReloadCause | Verifies the last reload cause of the device. | ✅&nbsp;Success | - |
@@ -172,6 +165,7 @@
 | s2-brdr2 | STP | VerifySTPCounters | Verifies there is no errors in STP BPDU packets. | ✅&nbsp;Success | - |
 | s2-brdr2 | System | VerifyAgentLogs | Verifies there are no agent crash reports. | ✅&nbsp;Success | - |
 | s2-brdr2 | System | VerifyCoredump | Verifies there are no core dump files. | ✅&nbsp;Success | - |
+| s2-brdr2 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ✅&nbsp;Success | - |
 | s2-brdr2 | System | VerifyMaintenance | Verifies that the device is not currently under or entering maintenance. | ✅&nbsp;Success | - |
 | s2-brdr2 | System | VerifyNTP | Verifies if NTP is synchronised. | ✅&nbsp;Success | - |
 | s2-brdr2 | System | VerifyReloadCause | Verifies the last reload cause of the device. | ✅&nbsp;Success | - |
@@ -195,6 +189,7 @@
 | s2-leaf1 | STP | VerifySTPCounters | Verifies there is no errors in STP BPDU packets. | ✅&nbsp;Success | - |
 | s2-leaf1 | System | VerifyAgentLogs | Verifies there are no agent crash reports. | ✅&nbsp;Success | - |
 | s2-leaf1 | System | VerifyCoredump | Verifies there are no core dump files. | ✅&nbsp;Success | - |
+| s2-leaf1 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ✅&nbsp;Success | - |
 | s2-leaf1 | System | VerifyMaintenance | Verifies that the device is not currently under or entering maintenance. | ✅&nbsp;Success | - |
 | s2-leaf1 | System | VerifyNTP | Verifies if NTP is synchronised. | ✅&nbsp;Success | - |
 | s2-leaf1 | System | VerifyReloadCause | Verifies the last reload cause of the device. | ✅&nbsp;Success | - |
@@ -218,6 +213,7 @@
 | s2-leaf2 | STP | VerifySTPCounters | Verifies there is no errors in STP BPDU packets. | ✅&nbsp;Success | - |
 | s2-leaf2 | System | VerifyAgentLogs | Verifies there are no agent crash reports. | ✅&nbsp;Success | - |
 | s2-leaf2 | System | VerifyCoredump | Verifies there are no core dump files. | ✅&nbsp;Success | - |
+| s2-leaf2 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ✅&nbsp;Success | - |
 | s2-leaf2 | System | VerifyMaintenance | Verifies that the device is not currently under or entering maintenance. | ✅&nbsp;Success | - |
 | s2-leaf2 | System | VerifyNTP | Verifies if NTP is synchronised. | ✅&nbsp;Success | - |
 | s2-leaf2 | System | VerifyReloadCause | Verifies the last reload cause of the device. | ✅&nbsp;Success | - |
@@ -241,6 +237,7 @@
 | s2-leaf3 | STP | VerifySTPCounters | Verifies there is no errors in STP BPDU packets. | ✅&nbsp;Success | - |
 | s2-leaf3 | System | VerifyAgentLogs | Verifies there are no agent crash reports. | ✅&nbsp;Success | - |
 | s2-leaf3 | System | VerifyCoredump | Verifies there are no core dump files. | ✅&nbsp;Success | - |
+| s2-leaf3 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ✅&nbsp;Success | - |
 | s2-leaf3 | System | VerifyMaintenance | Verifies that the device is not currently under or entering maintenance. | ✅&nbsp;Success | - |
 | s2-leaf3 | System | VerifyNTP | Verifies if NTP is synchronised. | ✅&nbsp;Success | - |
 | s2-leaf3 | System | VerifyReloadCause | Verifies the last reload cause of the device. | ✅&nbsp;Success | - |
@@ -264,6 +261,7 @@
 | s2-leaf4 | STP | VerifySTPCounters | Verifies there is no errors in STP BPDU packets. | ✅&nbsp;Success | - |
 | s2-leaf4 | System | VerifyAgentLogs | Verifies there are no agent crash reports. | ✅&nbsp;Success | - |
 | s2-leaf4 | System | VerifyCoredump | Verifies there are no core dump files. | ✅&nbsp;Success | - |
+| s2-leaf4 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ✅&nbsp;Success | - |
 | s2-leaf4 | System | VerifyMaintenance | Verifies that the device is not currently under or entering maintenance. | ✅&nbsp;Success | - |
 | s2-leaf4 | System | VerifyNTP | Verifies if NTP is synchronised. | ✅&nbsp;Success | - |
 | s2-leaf4 | System | VerifyReloadCause | Verifies the last reload cause of the device. | ✅&nbsp;Success | - |
@@ -282,6 +280,7 @@
 | s2-spine1 | STP | VerifySTPCounters | Verifies there is no errors in STP BPDU packets. | ✅&nbsp;Success | - |
 | s2-spine1 | System | VerifyAgentLogs | Verifies there are no agent crash reports. | ✅&nbsp;Success | - |
 | s2-spine1 | System | VerifyCoredump | Verifies there are no core dump files. | ✅&nbsp;Success | - |
+| s2-spine1 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ✅&nbsp;Success | - |
 | s2-spine1 | System | VerifyMaintenance | Verifies that the device is not currently under or entering maintenance. | ✅&nbsp;Success | - |
 | s2-spine1 | System | VerifyNTP | Verifies if NTP is synchronised. | ✅&nbsp;Success | - |
 | s2-spine1 | System | VerifyReloadCause | Verifies the last reload cause of the device. | ✅&nbsp;Success | - |
@@ -299,6 +298,7 @@
 | s2-spine2 | STP | VerifySTPCounters | Verifies there is no errors in STP BPDU packets. | ✅&nbsp;Success | - |
 | s2-spine2 | System | VerifyAgentLogs | Verifies there are no agent crash reports. | ✅&nbsp;Success | - |
 | s2-spine2 | System | VerifyCoredump | Verifies there are no core dump files. | ✅&nbsp;Success | - |
+| s2-spine2 | System | VerifyFileSystemUtilization | Verifies that no partition is utilizing more than 75% of its disk space. | ✅&nbsp;Success | - |
 | s2-spine2 | System | VerifyMaintenance | Verifies that the device is not currently under or entering maintenance. | ✅&nbsp;Success | - |
 | s2-spine2 | System | VerifyNTP | Verifies if NTP is synchronised. | ✅&nbsp;Success | - |
 | s2-spine2 | System | VerifyReloadCause | Verifies the last reload cause of the device. | ✅&nbsp;Success | - |

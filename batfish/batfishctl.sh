@@ -5,6 +5,8 @@ set -uo pipefail
 BF_HOME="${BF_HOME:-/home/coder/project/labfiles/batfish-service}"
 LOG="$BF_HOME/logs/batfish_service.log"
 PORT=9996
+# install_batfish.sh가 받아 둔 Java 21+ JRE를 우선 사용 (최신 Batfish jar는 Java 17로 실행 불가)
+JAVA="$BF_HOME/jre/bin/java"; [ -x "$JAVA" ] || JAVA=java
 
 status() {
   if pgrep -f allinone-bundle.jar >/dev/null 2>&1; then
@@ -28,7 +30,7 @@ case "${1:-status}" in
       echo "Batfish가 설치되어 있지 않습니다. ./batfish/install_batfish.sh 를 먼저 실행하세요." >&2; exit 1; }
     mkdir -p "$BF_HOME/logs" "$BF_HOME/data/containers"
     cd "$BF_HOME/rootfs"
-    setsid nohup java -XX:-UseCompressedOops -Xmx3g \
+    setsid nohup "$JAVA" -XX:-UseCompressedOops -Xmx3g \
       -Dlog4j.configurationFile=log4j2.yaml \
       -cp allinone-bundle.jar org.batfish.allinone.Main \
       -runclient false -loglevel warn \

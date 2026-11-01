@@ -1,6 +1,6 @@
 # Claude Code 설치 및 활용 가이드
 
-이 문서는 `README.md`의 STEP #5였던 Claude Code 설치 안내를 분리하고, 이 저장소(AVD 6.3.0 기반 L3LS EVPN-VXLAN 랩)에서 Claude Code를 실제로 어떻게 활용할 수 있는지 실전 프롬프트 예시와 함께 정리한 자료입니다. 설치 자체는 `README.md`의 STEP #1~#4(Python 패키지 설치, 저장소 클론, `LABPASSPHRASE` 설정, 저장소 디렉토리 이동)를 먼저 마친 뒤 진행하세요.
+이 문서는 `README.md`의 STEP #5였던 Claude Code 설치 안내를 분리하고, 이 저장소(AVD 6.4.0 기반 L3LS EVPN-VXLAN 랩)에서 Claude Code를 실제로 어떻게 활용할 수 있는지 실전 프롬프트 예시와 함께 정리한 자료입니다. 설치 자체는 `README.md`의 STEP #1~#4(Python 패키지 설치, 저장소 클론, `LABPASSPHRASE` 설정, 저장소 디렉토리 이동)를 먼저 마친 뒤 진행하세요.
 
 <br>
 
@@ -28,7 +28,7 @@ claude
 
 <br>
 
-## 3. AVD 6.3.0 작업에 Claude Code 활용하기 — 실전 예시
+## 3. AVD 6.4.0 작업에 Claude Code 활용하기 — 실전 예시
 
 아래는 이 저장소의 실제 워크플로우(`group_vars` 수정 → `make build_dc{n}` → diff 확인 → 배포 → ANTA 검증)를 Claude Code로 진행하는 구체적인 프롬프트 예시입니다. 각 예시는 그대로 입력해도 되고, 상황에 맞게 바꿔서 사용해도 됩니다.
 

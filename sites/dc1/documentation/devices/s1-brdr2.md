@@ -578,10 +578,10 @@ ip routing vrf A
 | VRF | Routing Enabled |
 | --- | --------------- |
 | default | False |
-| 100 | false |
-| 200 | false |
-| A | false |
-| default | false |
+| 100 | False |
+| 200 | False |
+| A | False |
+| default | False |
 
 ### Static Routes
 
@@ -663,20 +663,20 @@ ASN Notation: asplain
 
 #### BGP Neighbors
 
-| Neighbor | Remote AS | VRF | Shutdown | Send-community | Maximum-routes | Allowas-in | BFD | RIB Pre-Policy Retain | Route-Reflector Client | Passive | TTL Max Hops |
-| -------- | --------- | --- | -------- | -------------- | -------------- | ---------- | --- | --------------------- | ---------------------- | ------- | ------------ |
-| 10.1.0.10 | 65000 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
-| 10.1.0.12 | 65000 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
-| 10.1.0.102 | 65199 | default | - | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | - | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | - | - | - | - |
-| 10.1.0.104 | 65199 | default | - | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | - | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | - | - | - | - |
-| 10.255.0.12 | 65000 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
-| 10.255.0.14 | 65000 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
-| 172.16.255.5 | 65501 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
-| 172.16.255.7 | 65501 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - |
-| 192.1.1.2 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | default | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - |
-| 192.4.4.2 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | 100 | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - |
-| 192.5.4.2 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | 200 | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - |
-| 192.2.2.2 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | A | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - |
+| Neighbor | Remote AS | VRF | Shutdown | Send-community | Maximum-routes | Maximum-accepted-routes | Maximum-advertised-routes | Allowas-in | BFD | RIB Pre-Policy Retain | Route-Reflector Client | Passive | TTL Max Hops |
+| -------- | --------- | --- | -------- | -------------- | -------------- | ----------------------- | ------------------------- | ---------- | --- | --------------------- | ---------------------- | ------- | ------------ |
+| 10.1.0.10 | 65000 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
+| 10.1.0.12 | 65000 | default | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | Inherited from peer group EVPN-OVERLAY-LOCAL-PEERS | - | - | - | - |
+| 10.1.0.102 | 65199 | default | - | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | - | - | - | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | - | - | - | - |
+| 10.1.0.104 | 65199 | default | - | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | - | - | - | Inherited from peer group EVPN-OVERLAY-REMOTE-PEERS | - | - | - | - |
+| 10.255.0.12 | 65000 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - | - | - |
+| 10.255.0.14 | 65000 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - | - | - |
+| 172.16.255.5 | 65501 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - | - | - |
+| 172.16.255.7 | 65501 | default | - | Inherited from peer group IPV4-UNDERLAY-PEERS | Inherited from peer group IPV4-UNDERLAY-PEERS | - | - | - | - | - | - | - | - |
+| 192.1.1.2 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | default | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - | - | - |
+| 192.4.4.2 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | 100 | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - | - | - |
+| 192.5.4.2 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | 200 | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - | - | - |
+| 192.2.2.2 | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | A | - | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | Inherited from peer group MLAG-IPV4-UNDERLAY-PEER | - | - | - | - | - | - | - | - |
 
 #### Router BGP EVPN Address Family
 

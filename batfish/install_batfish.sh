@@ -11,13 +11,20 @@ BF_HOME="${BF_HOME:-/home/coder/project/labfiles/batfish-service}"
 IMAGE="${BF_IMAGE:-batfish/allinone}"
 TAG="${BF_TAG:-latest}"
 
-echo "== [1/4] Java 런타임 설치 =="
-if command -v java >/dev/null 2>&1; then
-  echo "이미 설치됨: $(java -version 2>&1 | head -1)"
+# 최신 batfish/allinone 이미지의 jar는 Java 21 이상으로 빌드되어 있다(class file 65+, 2026-08 빌드 기준).
+# ATD(Debian 12)의 apt에는 OpenJDK 17까지만 있고, 이미지에 들어 있는 JRE는 glibc 2.38이 필요해 호스트에서
+# 실행되지 않는다. 그래서 glibc 의존성이 낮은 Eclipse Temurin JRE를 $BF_HOME/jre 에 내려받아 쓴다
+# (batfishctl.sh가 $BF_HOME/jre/bin/java 를 우선 사용).
+JAVA_MAJOR="${BF_JAVA_MAJOR:-25}"
+echo "== [1/4] Java ${JAVA_MAJOR} 런타임 설치 (Temurin JRE → $BF_HOME/jre) =="
+mkdir -p "$BF_HOME"
+if "$BF_HOME/jre/bin/java" -version 2>&1 | grep -q "version \"${JAVA_MAJOR}\."; then
+  echo "이미 설치됨: $("$BF_HOME/jre/bin/java" -version 2>&1 | head -1)"
 else
-  sudo apt-get update -qq
-  sudo apt-get install -y -qq default-jre-headless
-  java -version
+  rm -rf "$BF_HOME/jre" && mkdir -p "$BF_HOME/jre"
+  curl -fsSL "https://api.adoptium.net/v3/binary/latest/${JAVA_MAJOR}/ga/linux/x64/jre/hotspot/normal/eclipse" \
+    | tar -xz -C "$BF_HOME/jre" --strip-components=1
+  "$BF_HOME/jre/bin/java" -version 2>&1 | head -1
 fi
 
 echo "== [2/4] Batfish 컨테이너 이미지 내려받기 ($IMAGE:$TAG) =="

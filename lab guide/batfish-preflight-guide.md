@@ -63,7 +63,10 @@ docker run --name batfish -v batfish-data:/data -p 9997:9997 -p 9996:9996 batfis
 
 정리하면 설치 스크립트가 하는 일은 네 가지입니다.
 
-1. `default-jre-headless` (OpenJDK 17) 설치 — Batfish 실행에 필요
+1. Java 25 JRE(Eclipse Temurin) 설치 — Batfish 실행에 필요. `../batfish-service/jre/`에 내려받습니다.
+   2026-08 이후의 `batfish/allinone:latest` jar는 Java 21 이상(class file 65)으로 빌드되어 있어 ATD(Debian 12)의
+   apt에 있는 OpenJDK 17로는 실행되지 않고, 이미지에 들어 있는 JRE는 glibc 2.38을 요구해 호스트에서 돌지 않습니다.
+   그래서 glibc 의존성이 낮은 Temurin 바이너리를 따로 받고, `batfishctl.sh`가 이 JRE를 우선 사용합니다.
 2. `batfish/allinone:latest` 이미지 매니페스트/레이어를 레지스트리에서 내려받아 `rootfs/`에 전개
 3. `allinone-bundle.jar` 확보 확인
 4. 이미지에 동봉된 `pybatfish` wheel 설치 — **서비스와 클라이언트 버전이 정확히 일치**하게 하려고
@@ -84,6 +87,7 @@ make bf_install
 ├── atd_avd_l3_dc/        <- 이 저장소
 │   └── batfish/          <- 검증 도구 (저장소에 포함)
 └── batfish-service/      <- Batfish 서비스 실체 (저장소 밖, 재설치 가능)
+    ├── jre/bin/java      <- Temurin JRE 25 (batfishctl.sh가 우선 사용)
     ├── rootfs/allinone-bundle.jar
     ├── data/containers/  <- 스냅샷 저장소
     └── logs/
@@ -92,7 +96,7 @@ make bf_install
 정상 종료 시 마지막 줄:
 
 ```
-pybatfish 2025.07.07.2423
+pybatfish 2026.08.27.3685
 
 설치 완료. 다음 순서로 진행하세요:
   ./batfish/batfishctl.sh start     # Batfish 서비스 기동
@@ -705,7 +709,9 @@ make verify_dc1 && make verify_dc2             # ANTA
 ## 10. 문제 해결
 
 **`make bf_start` 후 `stopped`가 나옵니다**
-`../batfish-service/logs/batfish_service.log`를 확인하세요. `NoSuchFileException: allinone-bundle.jar`이면
+`../batfish-service/logs/batfish_service.log`를 확인하세요. `UnsupportedClassVersionError ... class file version 65.0`
+이면 Java가 너무 오래된 것입니다(OpenJDK 17로 최신 jar를 실행한 경우). `make bf_install`을 다시 실행하면
+`../batfish-service/jre/`에 Java 25를 받아 두고, `batfishctl.sh`가 그것을 사용합니다. `NoSuchFileException: allinone-bundle.jar`이면
 설치가 덜 된 것이니 `make bf_install`을 다시 실행합니다. 메모리 부족(`OutOfMemoryError`)이면
 `batfishctl.sh`의 `-Xmx3g`를 낮춰 보세요.
 

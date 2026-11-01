@@ -1,6 +1,6 @@
 # Codex CLI 설치 및 활용 가이드
 
-이 문서는 `lab guide/claude-code-guide.md`의 Codex CLI(OpenAI) 버전입니다. Claude Code 대신(또는 함께) OpenAI의 Codex CLI를 이용해 이 저장소(AVD 6.3.0 기반 L3LS EVPN-VXLAN 랩)의 설정 작업을 진행하고 싶은 경우 이 가이드를 참고하세요. 설치 자체는 `README.md`의 STEP #1~#4(Python 패키지 설치, 저장소 클론, `LABPASSPHRASE` 설정, 저장소 디렉토리 이동)를 먼저 마친 뒤 진행하세요.
+이 문서는 `lab guide/claude-code-guide.md`의 Codex CLI(OpenAI) 버전입니다. Claude Code 대신(또는 함께) OpenAI의 Codex CLI를 이용해 이 저장소(AVD 6.4.0 기반 L3LS EVPN-VXLAN 랩)의 설정 작업을 진행하고 싶은 경우 이 가이드를 참고하세요. 설치 자체는 `README.md`의 STEP #1~#4(Python 패키지 설치, 저장소 클론, `LABPASSPHRASE` 설정, 저장소 디렉토리 이동)를 먼저 마친 뒤 진행하세요.
 
 <br>
 
@@ -41,7 +41,7 @@ codex
 
 <br>
 
-## 3. AVD 6.3.0 작업에 Codex CLI 활용하기 — 실전 예시
+## 3. AVD 6.4.0 작업에 Codex CLI 활용하기 — 실전 예시
 
 ### 예시 1 — 새 VLAN 추가 (Lab 1과 동일한 작업을 Codex에게 위임)
 

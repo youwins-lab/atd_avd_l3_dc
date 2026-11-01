@@ -1,7 +1,7 @@
 # AVD와 CVP를 이용한 EVPN VXLAN 기반 L3LS 배포
 이 저장소는 실제 구축 사례가 아닌 **교육용 실습 자료**로, Arista의 AVD 자동화 프레임워크를 사용하여 듀얼 데이터센터, Layer 3 leaf-spine EVPN VXLAN 패브릭을 직접 배포해보며 익힐 수 있도록 구성되어 있습니다. 또한 설정 변경 관리 및 감사(auditing)를 위해 CI/CD 파이프라인에 CVP를 통합하는 방법도 함께 다룹니다. **eos_config** 롤을 이용한 ansible 플레이북으로 배포하는 정적(static) 설정을 가진 장비들과, AVD를 이용해 직접 수정하고 구현해야 하는 장비들이 함께 포함되어 있습니다.
 
-***참고:*** 이 실습 자료는 AVD 6.3.0 버전을 기준으로 작성되었습니다.
+***참고:*** 이 실습 자료는 AVD 6.4.0 버전을 기준으로 작성되었습니다. (6.3.0 → 6.4.0 전환 검증 기록: `lab guide/avd-6.4-upgrade-verification.md`)
 
 ## 데이터센터 패브릭 토폴로지
 아래는 여러분이 다룰 데이터센터 토폴로지의 네트워크 다이어그램입니다. 이 토폴로지에서 모든 `s1` 장비는 `sites/dc1`에 해당하고, 모든 `s2` 장비는 `sites/dc2`에 해당합니다.
@@ -97,7 +97,7 @@ ATD 환경은 재시작되면 그동안 설치했던 Ansible collection, python 
 
 이 스크립트는 다음을 순서대로 실행합니다:
 
-1. `arista.avd:==6.3.0`, `arista.cvp:==3.12.0` Ansible collection 설치
+1. `arista.avd:==6.4.0`, `arista.cvp:==3.12.0` Ansible collection 설치
 2. `pyavd`, `anta`, 관련 의존성 패키지(`pyavd-utils`, `python-socks`, `distlib`) 설치
 3. Claude Code CLI 설치 (이미 설치되어 있으면 건너뜀)
 
@@ -113,12 +113,12 @@ ATD 환경은 재시작되면 그동안 설치했던 Ansible collection, python 
 <br>
 
 ## STEP #1 - Ansible Collection AVD/CVP 와 Python 패키지 설치
-- 터미널 세션에서 아래 명령어를 실행하여, `Ansible Collection` `AVD 6.3.0`와 `CVP 3.12.0`을 설치합니다.
+- 터미널 세션에서 아래 명령어를 실행하여, `Ansible Collection` `AVD 6.4.0`와 `CVP 3.12.0`을 설치합니다.
 
 https://galaxy.ansible.com/ui/repo/published/arista/avd/docs/
 
 ``` bash
-ansible-galaxy collection install arista.avd:==6.3.0 arista.cvp:==3.12.0
+ansible-galaxy collection install arista.avd:==6.4.0 arista.cvp:==3.12.0
 ```
 
 AVD 6.x 버전부터는 `pyavd`를 통해 설정을 렌더링하며, ANTA 테스트 실행에 필요한 `anta`와 관련 의존성 패키지(`pyavd-utils`, `python-socks`, `distlib`)까지 함께 설치합니다. 이 패키지들은 ansible collection과 별도로 설치해야 합니다.
@@ -387,11 +387,11 @@ deploy_dc1_eapi: ## Deploy DC2 Spine/Leaf AVD generated configs via eAPI
 
 ## 부록 - AI 코딩 에이전트 설치 및 사용 (선택)
 
-이 랩의 설정 작업(그룹 변수 작성, 인벤토리 구성, 플레이북 실행 결과 확인 등)은 Claude Code나 Codex CLI 같은 AI 코딩 에이전트를 이용해 진행할 수 있습니다. 설치 방법과 이 저장소(AVD 6.3.0)에서 활용할 수 있는 실전 프롬프트 예시는 **lab guide** 디렉토리의 아래 문서를 참고하세요.
+이 랩의 설정 작업(그룹 변수 작성, 인벤토리 구성, 플레이북 실행 결과 확인 등)은 Claude Code나 Codex CLI 같은 AI 코딩 에이전트를 이용해 진행할 수 있습니다. 설치 방법과 이 저장소(AVD 6.4.0)에서 활용할 수 있는 실전 프롬프트 예시는 **lab guide** 디렉토리의 아래 문서를 참고하세요.
 
 - Claude Code: `claude-code-guide.md`
 - Codex CLI: `codex-cli-guide.md`
-- EOS MCP Server (Claude Code에서 장비 `show` 명령 조회, 읽기 전용): `eos-mcp-server-guide.md`
+- EOS MCP Server (Claude Code에서 장비 `show` 명령 조회, 토폴로지 HTML 생성, 읽기 전용): `eos-mcp-server-guide.md`
 
 <br>
 <br>

@@ -1,5 +1,9 @@
 # Batfish 사전 검증 → AVD 배포 → ANTA 검증 → 호스트 통신 확인: 전체 실행 기록
 
+> 이 문서는 **AVD 6.3.0** 시점의 실행 기록입니다. AVD 6.4.0으로 전환한 뒤 같은 절차(Batfish → 배포 → ANTA →
+> 호스트 통신)와 Lab 1~6, §7-A 장애 주입 실습을 다시 수행한 결과는
+> [`avd-6.4-upgrade-verification.md`](avd-6.4-upgrade-verification.md)에 있습니다.
+
 `lab guide/batfish-preflight-guide.md`에서 만든 사전 검증 절차를 실제 ATD 랩에 그대로 적용하고,
 그 뒤 AVD 배포와 ANTA 검증, 호스트 간 통신까지 한 번에 이어서 실행한 기록입니다.
 **아래 로그는 모두 실제 실행 결과이며 편집하지 않았습니다**(길이 문제로 일부 구간은 발췌).
