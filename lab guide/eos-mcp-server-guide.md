@@ -311,7 +311,7 @@ python3 mcp/topology.py --from-json mcp/topology.json   # 재수집 없이 그�
 
 | 표시 | 의미 |
 |---|---|
-| 링크 양 끝 `Et4` 라벨 | 그 장비 쪽 인터페이스 (Et=Ethernet, Po=Port-Channel) |
+| 박스 가장자리의 `Et4` 포트 배지 | 그 장비의 인터페이스. 선은 배지에서 출발하고 배지 테두리 색 = 선 색 (Et=Ethernet) |
 | 초록 실선 | L3 P2P, BGP Established |
 | **굵은 보라 선 + 중앙 라벨** | DCI(core↔core) — `DCI · 1.1.1.0/31 ↔ .1`, `eBGP up` |
 | 회색 점선 + `Po1000` | MLAG peer-link / core 간 Po16 / host 포트채널 멤버 |
@@ -323,7 +323,7 @@ python3 mcp/topology.py --from-json mcp/topology.json   # 재수집 없이 그�
 | 기능 | 방법 |
 |---|---|
 | 장비 상세 (인터페이스·IP·Po·상태·상대 장비·BGP) | 장비 클릭 → 연결만 강조 + 아래 상세 표 |
-| 표시 켜기/끄기 | `인터페이스` · `L3 링크 IP` · `VXLAN 터널` |
+| 표시 켜기/끄기 | `L3 링크 IP` · `VXLAN 터널` |
 | 크기 | `화면 맞춤` / `원본 크기` |
 
 그림 아래에 **DCI·core 연결 표**, **VXLAN 터널 표**, 장비 요약, LLDP 링크 전체 목록이 있습니다.

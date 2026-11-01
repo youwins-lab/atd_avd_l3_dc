@@ -199,92 +199,130 @@ def build_model(data):
 
 
 # --------------------------------------------------------------------------- layout
-NW, NH, GAP = 128, 80, 70            # 노드 크기, 같은 줄 노드 간격 (MLAG/peer 링크 라벨이 들어갈 폭)
-Y = {"spine": 40, "row": 300, "host": 540, "core1": 170, "core2": 430}
-CORE_GAP = 280                        # DC1 core ↔ DC2 core 사이 (DCI 라벨 자리)
+NW, NH, GAP = 128, 80, 84            # 기본 박스 크기, 같은 줄 박스 간격 (양쪽 포트 배지 + 선이 들어갈 폭)
+PORT_W, PORT_H = 30, 16              # 포트 배지 크기 (박스 가장자리에 붙는 인터페이스 이름)
+Y = {"spine": 40, "row": 310, "host": 570, "core1": 175, "core2": 445}
+CORE_GAP = 300                        # DC1 core ↔ DC2 core 사이 (DCI 라벨 자리)
 
 
-def layout(model):
+def _row_of(n):
+    return {"spine": "spine", "leaf": "row", "brdr": "row", "host": "host", "other": "host"}.get(n["role"], "row")
+
+
+def _y_of(model, name):
+    n = model["nodes"][name]
+    if n["role"] == "core":
+        cores = sorted(k for k, v in model["nodes"].items() if v["dc"] == n["dc"] and v["role"] == "core")
+        return Y["core1"] if cores.index(name) == 0 else Y["core2"]
+    return Y[_row_of(n)]
+
+
+def node_widths(model):
+    """박스 폭 = 위/아래 변에 붙는 포트 수에 맞춘다 (spine은 아래에 6개)."""
+    cnt = {}
+    for l in model["links"]:
+        for me, other in ((l["a"], l["b"]), (l["b"], l["a"])):
+            dy = _y_of(model, other) - _y_of(model, me)
+            if abs(dy) > 40:
+                cnt[(me, dy > 0)] = cnt.get((me, dy > 0), 0) + 1
+    return {n: max(NW, max(cnt.get((n, True), 0), cnt.get((n, False), 0)) * (PORT_W + 4) + 20)
+            for n in model["nodes"]}
+
+
+def layout(model, W):
     nodes = model["nodes"]
     by = lambda dc, role: sorted(n for n, v in nodes.items() if v["dc"] == dc and v["role"] == role)
+    row_w = lambda names: sum(W[n] for n in names) + GAP * (len(names) - 1)
+    rows = {}
+    for dc in ("dc1", "dc2"):
+        rows[(dc, "row")] = by(dc, "leaf") + by(dc, "brdr") if dc == "dc1" else by(dc, "brdr") + by(dc, "leaf")
+        rows[(dc, "spine")] = by(dc, "spine")
+    dc_w = max(row_w(v) for v in rows.values())
+    core_w = max([W[n] for n in nodes if nodes[n]["role"] == "core"] or [NW])
+    x_core1 = dc_w + 100
+    x_core2 = x_core1 + core_w + CORE_GAP
+    x_dc2 = x_core2 + core_w + 100
     pos = {}
-    row_w = lambda k: k * (NW + GAP) - GAP
-    dc_w = max(row_w(len(by(dc, "leaf")) + len(by(dc, "brdr"))) for dc in ("dc1", "dc2"))
-    x_core1 = dc_w + 90
-    x_core2 = x_core1 + NW + CORE_GAP
-    x_dc2 = x_core2 + NW + 90
     for dc, x0 in (("dc1", 0), ("dc2", x_dc2)):
-        # leaf 줄: border leaf는 DCI(중앙) 쪽에 둔다
-        row = by(dc, "leaf") + by(dc, "brdr") if dc == "dc1" else by(dc, "brdr") + by(dc, "leaf")
-        start = x0 + (dc_w - row_w(len(row))) / 2
-        for i, nm in enumerate(row):
-            pos[nm] = (start + i * (NW + GAP), Y["row"])
-        sp = by(dc, "spine")
-        start = x0 + (dc_w - row_w(len(sp))) / 2
-        for i, nm in enumerate(sp):
-            pos[nm] = (start + i * (NW + GAP), Y["spine"])
+        for key in ("row", "spine"):
+            names = rows[(dc, key)]
+            x = x0 + (dc_w - row_w(names)) / 2
+            for nm in names:
+                pos[nm] = (x, Y[key])
+                x += W[nm] + GAP
         cx = x_core1 if dc == "dc1" else x_core2
-        for i, nm in enumerate(by(dc, "core")):
-            pos[nm] = (cx, Y["core1"] if i == 0 else Y["core2"])
-    # host / 기타: 연결된 장비들의 가운데 아래
-    for nm, v in nodes.items():
+        for nm in by(dc, "core"):
+            pos[nm] = (cx + (core_w - W[nm]) / 2, _y_of(model, nm))
+    for nm in nodes:           # host: 연결된 장비들의 가운데 아래
         if nm in pos:
             continue
         nb = [l["b"] if l["a"] == nm else l["a"] for l in model["links"] if nm in (l["a"], l["b"])]
-        xs = [pos[x][0] for x in nb if x in pos]
-        pos[nm] = ((sum(xs) / len(xs)) if xs else 0, Y["host"])
-    return pos, x_dc2 + dc_w, Y["host"] + NH + 30, dc_w, x_core1, x_core2
+        cs = [pos[x][0] + W[x] / 2 for x in nb if x in pos]
+        pos[nm] = ((sum(cs) / len(cs) if cs else 0) - W[nm] / 2, _y_of(model, nm))
+    return pos, x_dc2 + dc_w, Y["host"] + NH + 34, dc_w, x_core1, x_core2, core_w
 
 
-def anchors(model, pos):
-    """링크마다 양 끝의 연결점(박스 가장자리)을 정한다. 같은 변에 붙는 링크는 변을 따라 고르게 펼친다."""
+def ports(model, pos, W):
+    """링크 끝마다 포트 배지 위치와 선이 시작할 점을 정한다.
+
+    같은 변의 포트는 상대 장비 위치 순으로 정렬해 일정 간격으로 놓으므로 선이 서로 엇갈리지 않는다.
+    반환: {(링크 index, "a"|"b"): (배지 중심 x, y, 선 시작 x, y, 변)}
+    """
     sides = {}
     for i, l in enumerate(model["links"]):
         for me, other, end in ((l["a"], l["b"], "a"), (l["b"], l["a"], "b")):
             (x1, y1), (x2, y2) = pos[me], pos[other]
+            cx2 = x2 + W[other] / 2
             if abs(y2 - y1) > 40:
-                side = "bottom" if y2 > y1 else "top"
-                sk = x2
+                side, sk = ("bottom" if y2 > y1 else "top"), cx2
             else:
-                side = "right" if x2 > x1 else "left"
-                sk = y2
-            sides.setdefault((me, side), []).append((sk, l[f"{end}_if"], i, end))
-    pt = {}
+                side, sk = ("right" if x2 > x1 else "left"), y2
+            sides.setdefault((me, side), []).append((sk, len(l[f"{end}_if"]), l[f"{end}_if"], i, end))
+    out = {}
     for (me, side), lst in sides.items():
-        lst.sort(key=lambda t: (t[0], len(t[1]), t[1]))
+        lst.sort()
         x, y = pos[me]
+        w = W[me]
         n = len(lst)
-        for k, (_, _, i, end) in enumerate(lst):
-            f = (k + 1) / (n + 1)
+        for k, (_, _, _, i, end) in enumerate(lst):
             if side in ("top", "bottom"):
-                px, py = x + NW * (0.12 + 0.76 * f), (y if side == "top" else y + NH)
+                step = PORT_W + 4
+                px = x + w / 2 + (k - (n - 1) / 2) * step
+                if side == "top":
+                    out[(i, end)] = (px, y - PORT_H / 2, px, y - PORT_H, side)
+                else:
+                    out[(i, end)] = (px, y + NH + PORT_H / 2, px, y + NH + PORT_H, side)
             else:
-                px, py = (x + NW if side == "right" else x), y + NH * (0.15 + 0.7 * f)
-            pt[(i, end)] = (px, py)
-    return pt
+                step = PORT_H + 6
+                py = y + NH / 2 + (k - (n - 1) / 2) * step
+                if side == "left":
+                    out[(i, end)] = (x - PORT_W / 2, py, x - PORT_W, py, side)
+                else:
+                    out[(i, end)] = (x + w + PORT_W / 2, py, x + w + PORT_W, py, side)
+    return out
 
 
 # --------------------------------------------------------------------------- HTML
 def render_html(model):
-    pos, width, height, dc_w, x_core1, x_core2 = layout(model)
-    pt = anchors(model, pos)
+    W = node_widths(model)
+    pos, width, height, dc_w, x_core1, x_core2, core_w = layout(model, W)
+    pp = ports(model, pos, W)
     esc = html.escape
     K = {"l3": "L3 P2P", "l2": "L2 / Port-Channel 멤버", "dci": "DCI (core↔core)", "peer": "MLAG / peer 링크"}
-    lines, labels, mids = [], [], []
+    lines, portg, mids = [], [], []
 
     def pill(x, y, text, cls):
         w = len(text) * 5.9 + 8
         return (f'<g class="pill {cls}"><rect x="{x - w / 2:.1f}" y="{y - 7.5:.1f}" width="{w:.1f}" height="15" rx="4"/>'
                 f'<text x="{x:.1f}" y="{y + 3.6:.1f}" text-anchor="middle">{esc(text)}</text></g>')
 
-    # 겹침 방지: 이미 차지한 영역(장비 박스 + 먼저 놓은 라벨)을 피해서 라벨을 놓는다
-    occupied = [(x - 2, y - 2, NW + 4, NH + 4) for x, y in pos.values()]
+    # 중앙 라벨(DCI, Po, IP) 겹침 방지용: 장비 박스 + 포트 배지 + 먼저 놓은 라벨
+    occupied = [(x - 2, y - PORT_H - 2, W[n] + 4, NH + 2 * PORT_H + 4) for n, (x, y) in pos.items()]
     hit = lambda r: any(r[0] < o[0] + o[2] and o[0] < r[0] + r[2] and r[1] < o[1] + o[3] and o[1] < r[1] + r[3]
                         for o in occupied)
-    pw = lambda text: len(text) * 5.9 + 8
 
     def place(cands, text, cls, force=True):
-        w = pw(text)
+        w = len(text) * 5.9 + 8
         for (cx, cy) in cands:
             r = (cx - w / 2 - 1, cy - 8.5, w + 2, 17)
             if not hit(r):
@@ -296,50 +334,44 @@ def render_html(model):
             return pill(cx, cy, text, cls)
         return ""
 
-    # 1) 링크 선 + 중앙 라벨(DCI, 포트채널) 먼저
     po_drawn = set()
-    geo = []
     for i, l in enumerate(model["links"]):
-        (ax, ay), (bx, by_) = pt[(i, "a")], pt[(i, "b")]
-        geo.append((ax, ay, bx, by_))
-        if l["oper"] == "down":
-            cls = "down"
-        else:
-            cls = {"up": "up", "down": "down", "no-bgp": "nobgp"}.get(l["bgp"], l["kind"])
+        _, _, ax, ay, _ = pp[(i, "a")]
+        _, _, bx, by_, _ = pp[(i, "b")]
+        cls = "down" if l["oper"] == "down" else {"up": "up", "down": "down", "no-bgp": "nobgp"}.get(l["bgp"], l["kind"])
         tip = (f'{l["a"]} {l["a_if"]} {l["a_ip"] or ""}{" (" + l["a_po"] + ")" if l["a_po"] else ""}  ↔  '
                f'{l["b"]} {l["b_if"]} {l["b_ip"] or ""}{" (" + l["b_po"] + ")" if l["b_po"] else ""}\n'
                f'{K[l["kind"]]} · 링크 {l["oper"]}' + (f' · BGP {l["bgp"]}' if l["kind"] in ("l3", "dci") else ""))
-        lines.append(f'<line class="lk {cls} k-{l["kind"]}" data-a="{esc(l["a"])}" data-b="{esc(l["b"])}" '
-                     f'x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by_:.1f}"><title>{esc(tip)}</title></line>')
+        da = f'data-a="{esc(l["a"])}" data-b="{esc(l["b"])}"'
+        lines.append(f'<line class="lk {cls} k-{l["kind"]}" {da} x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by_:.1f}">'
+                     f'<title>{esc(tip)}</title></line>')
+        # 포트 배지: 박스 가장자리에 붙고, 테두리 색 = 선 색
+        for end in ("a", "b"):
+            cx, cy, _, _, side = pp[(i, end)]
+            ifn, po = ifshort(l[f"{end}_if"]), l[f"{end}_po"]
+            t = f'{l[end]} {l[end + "_if"]}' + (f' ({po})' if po else "") + (f' {l[end + "_ip"]}' if l[end + "_ip"] else "")
+            portg.append(f'<g class="port {cls} k-{l["kind"]}" {da}><title>{esc(t)}</title>'
+                         f'<rect x="{cx - PORT_W / 2:.1f}" y="{cy - PORT_H / 2:.1f}" width="{PORT_W}" height="{PORT_H}" rx="3"/>'
+                         f'<text x="{cx:.1f}" y="{cy + 3.8:.1f}" text-anchor="middle">{esc(ifn)}</text></g>')
+            occupied.append((cx - PORT_W / 2, cy - PORT_H / 2, PORT_W, PORT_H))
         mx, my = (ax + bx) / 2, (ay + by_) / 2
         if l["kind"] == "dci":
-            mids.append(place([(mx, my - 15)], f'DCI · {l["a_ip"] or "?"} ↔ .{(l["b_ip"] or "").split(".")[-1]}', "dcil"))
-            mids.append(place([(mx, my + 15)], f'eBGP {l["bgp"]}', "dcil s-" + l["bgp"]))
-        if l["kind"] == "peer" and l["a_po"]:
-            key = (l["a"], l["b"])
-            if key not in po_drawn:
-                po_drawn.add(key)
-                (x1, y1), (x2, y2) = pos[l["a"]], pos[l["b"]]
-                if abs(y1 - y2) < 40:   # 좌우 배치 → 두 장비 사이 위쪽
-                    mids.append(place([((x1 + x2 + NW) / 2, min(y1, y2) + 7)], ifshort(l["a_po"]), "pol"))
-                else:                   # 상하 배치(core) → 링크 오른쪽
-                    mids.append(place([(x1 + NW / 2 + 56, (y1 + y2 + NH) / 2)],
-                                      f'{ifshort(l["a_po"])} (Et1+Et6)', "pol"))
-    # 2) 인터페이스 라벨: 끝점에서 선을 따라 가까운 곳부터 빈자리를 찾는다
-    for i, l in enumerate(model["links"]):
-        ax, ay, bx, by_ = geo[i]
-        L = max(((bx - ax) ** 2 + (by_ - ay) ** 2) ** 0.5, 1)
-        ux, uy = (bx - ax) / L, (by_ - ay) / L
-        lim = L / 2 - 12
-        for (px, py, sx, ifn) in ((ax, ay, 1, l["a_if"]), (bx, by_, -1, l["b_if"])):
-            ds = [d for d in range(14, int(lim) + 1, 7)] or [max(lim, 8)]
-            cands = [(px + sx * ux * d + (-uy) * o, py + sx * uy * d + ux * o) for d in ds for o in (0, 11, -11)]
-            labels.append(place(cands, ifshort(ifn),
-                                f'ifl k-{l["kind"]}" data-a="{esc(l["a"])}" data-b="{esc(l["b"])}'))
-    # 3) (선택 표시) L3 링크 IP — 겹치면 생략
-    for i, l in enumerate(model["links"]):
+            mids.append(place([(mx, my - 16)], f'DCI · {l["a_ip"] or "?"} ↔ .{(l["b_ip"] or "").split(".")[-1]}', "dcil"))
+            mids.append(place([(mx, my + 16)], f'eBGP {l["bgp"]}', "dcil s-" + l["bgp"]))
+        if l["kind"] == "peer" and l["a_po"] and (l["a"], l["b"]) not in po_drawn:
+            po_drawn.add((l["a"], l["b"]))
+            (x1, y1), (x2, y2) = pos[l["a"]], pos[l["b"]]
+            if abs(y1 - y2) < 40:   # 좌우 배치 → 두 박스 사이, 포트 위쪽
+                left = l["a"] if x1 < x2 else l["b"]
+                gx = pos[left][0] + W[left] + GAP / 2
+                mids.append(place([(gx, min(y1, y2) + 12)], ifshort(l["a_po"]), "pol"))
+            else:                   # 상하 배치(core) → 링크 오른쪽
+                cxm = pos[l["a"]][0] + W[l["a"]] / 2
+                mids.append(place([(cxm + 62, (y1 + y2 + NH) / 2)], f'{ifshort(l["a_po"])} (Et1+Et6)', "pol"))
+    for i, l in enumerate(model["links"]):   # (토글) L3 링크 IP — 자리가 없으면 생략
         if l["kind"] == "l3":
-            ax, ay, bx, by_ = geo[i]
+            _, _, ax, ay, _ = pp[(i, "a")]
+            _, _, bx, by_, _ = pp[(i, "b")]
             mids.append(place([((ax + bx) / 2, (ay + by_) / 2)], l["a_ip"] or "", "ipl", force=False))
 
     # VXLAN 터널 오버레이 (기본 숨김)
@@ -348,8 +380,8 @@ def render_html(model):
 
     def vpt(ip):
         ns = vt[ip]
-        xs = [pos[n][0] + NW / 2 for n in ns]
-        return sum(xs) / len(xs), min(pos[n][1] for n in ns) - 4
+        xs = [pos[n][0] + W[n] / 2 for n in ns]
+        return sum(xs) / len(xs), min(pos[n][1] for n in ns) - PORT_H - 4
     for a, b in model["tunnels"]:
         (x1, y1), (x2, y2) = vpt(a), vpt(b)
         inter = model["nodes"][vt[a][0]]["dc"] != model["nodes"][vt[b][0]]["dc"]
@@ -360,31 +392,31 @@ def render_html(model):
     nds = []
     for n in model["nodes"].values():
         x, y = pos[n["name"]]
+        w = W[n["name"]]
         bad = n["status"] != "success" or n["bgp_down"]
         sub = n["lo0"] or n["mgmt_ip"] or ""
-        line3 = (f'AS {n["asn"]} · BGP {n["bgp_est"]}/{n["bgp_total"]}' if n["bgp_total"]
-                 else (n["mgmt_ip"] or ""))
+        line3 = (f'AS {n["asn"]} · BGP {n["bgp_est"]}/{n["bgp_total"]}' if n["bgp_total"] else (n["mgmt_ip"] or ""))
         role = {"brdr": "BORDER LEAF"}.get(n["role"], n["role"].upper())
         if n["lo1"]:
             role += f' · VTEP {n["lo1"].split("/")[0]}'
         nds.append(f'<g class="nd r-{n["role"]}{" bad" if bad else ""}" data-n="{esc(n["name"])}" tabindex="0">'
-                   f'<rect x="{x:.0f}" y="{y:.0f}" width="{NW}" height="{NH}" rx="9"/>'
+                   f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{NH}" rx="9"/>'
                    f'<text class="t1" x="{x + 10:.0f}" y="{y + 20:.0f}">{esc(n["name"])}</text>'
                    f'<text class="t2" x="{x + 10:.0f}" y="{y + 37:.0f}">{esc(sub)}</text>'
                    f'<text class="t2" x="{x + 10:.0f}" y="{y + 53:.0f}">{esc(line3)}</text>'
                    f'<text class="t3" x="{x + 10:.0f}" y="{y + 69:.0f}">{esc(role)}</text></g>')
 
-    # 배경 구역: DC1 / DCI / DC2
+    zx2 = x_core2 + core_w + 100 - 10
     zones = [
-        f'<rect class="zone" x="-10" y="8" width="{dc_w + 20}" height="{height - 16}" rx="14"/>',
-        f'<rect class="zone dcizone" x="{x_core1 - 30}" y="8" width="{x_core2 + NW - x_core1 + 60}" height="{height - 16}" rx="14"/>',
-        f'<rect class="zone" x="{x_core2 + NW + 80}" y="8" width="{dc_w + 20}" height="{height - 16}" rx="14"/>',
-        f'<text class="dcl" x="{dc_w / 2:.0f}" y="{height - 16:.0f}" text-anchor="middle">DC1 · AS 65000-65199 패브릭</text>',
-        f'<text class="dcl dcit" x="{(x_core1 + x_core2 + NW) / 2:.0f}" y="{height - 16:.0f}" text-anchor="middle">DCI · CORE</text>',
-        f'<text class="dcl" x="{x_core2 + NW + 90 + dc_w / 2:.0f}" y="{height - 16:.0f}" text-anchor="middle">DC2</text>',
+        f'<rect class="zone" x="-14" y="6" width="{dc_w + 28}" height="{height - 12}" rx="14"/>',
+        f'<rect class="zone dcizone" x="{x_core1 - 40}" y="6" width="{x_core2 + core_w - x_core1 + 80}" height="{height - 12}" rx="14"/>',
+        f'<rect class="zone" x="{zx2 - 4}" y="6" width="{dc_w + 28}" height="{height - 12}" rx="14"/>',
+        f'<text class="dcl" x="{dc_w / 2:.0f}" y="{height - 14:.0f}" text-anchor="middle">DC1</text>',
+        f'<text class="dcl dcit" x="{(x_core1 + x_core2 + core_w) / 2:.0f}" y="{height - 14:.0f}" text-anchor="middle">DCI · CORE</text>',
+        f'<text class="dcl" x="{zx2 + 10 + dc_w / 2:.0f}" y="{height - 14:.0f}" text-anchor="middle">DC2</text>',
     ]
     svg = "\n".join(zones + ['<g id="links">'] + lines + ["</g>", '<g id="tunnels">'] + tun + ["</g>"]
-                    + ['<g id="nodes">'] + nds + ["</g>", '<g id="ifl">'] + labels + ["</g>", '<g id="mids">'] + mids + ["</g>"])
+                    + ['<g id="nodes">'] + nds + ["</g>", '<g id="ifl">'] + portg + ["</g>", '<g id="mids">'] + mids + ["</g>"])
 
     nodes = sorted(model["nodes"].values(), key=lambda n: (n["dc"], TIER[n["role"]], n["name"]))
     l3 = [l for l in model["links"] if l["kind"] in ("l3", "dci")]
@@ -478,9 +510,11 @@ h2{{font-size:15px;margin:2px 4px 10px}}
 .lk:hover{{stroke-width:5}} .lk.k-dci:hover{{stroke-width:8}}
 .tun{{fill:none;stroke:var(--tun);stroke-width:2;stroke-dasharray:7 5;opacity:.9}} .tun.inter{{stroke-width:3}}
 #topo:not(.show-tun) #tunnels{{display:none}}
-#topo:not(.show-if) #ifl{{display:none}} #topo:not(.show-ip) .ipl{{display:none}}
+#topo:not(.show-ip) .ipl{{display:none}}
 .pill rect{{fill:var(--pill);stroke:var(--line);stroke-width:.8}} .pill text{{font-size:9.5px;fill:var(--ink)}}
-.ifl.k-dci rect{{stroke:var(--dci);stroke-width:1.4}} .ifl.k-dci text{{fill:var(--dci);font-weight:600}}
+.port rect{{fill:var(--card);stroke:var(--l2);stroke-width:1.4}} .port text{{font-size:10px;font-weight:600;fill:var(--ink)}}
+.port.up rect{{stroke:var(--up)}} .port.down rect{{stroke:var(--down);fill:var(--down)}} .port.down text{{fill:#fff}}
+.port.k-dci rect{{stroke:var(--dci);fill:var(--dci)}} .port.k-dci text{{fill:#fff}} .port.nobgp rect{{stroke:var(--mute)}}
 .dcil rect{{fill:var(--dci);stroke:none}} .dcil text{{fill:#fff;font-size:10.5px;font-weight:600}}
 .dcil.s-down rect{{fill:var(--down)}}
 .pol rect{{stroke:var(--l2);stroke-dasharray:2 2}} .pol text{{fill:var(--mute);font-weight:600}}
@@ -491,7 +525,7 @@ h2{{font-size:15px;margin:2px 4px 10px}}
 .r-core rect{{stroke:var(--dci);stroke-width:1.6}}
 .nd text{{fill:var(--ink)}} .t1{{font-weight:650;font-size:13px}} .t2{{font-size:11px;fill:var(--mute)!important;font-variant-numeric:tabular-nums}}
 .t3{{font-size:9.5px;letter-spacing:.04em;fill:var(--mute)!important}}
-#topo.focus .lk:not(.hi),#topo.focus .pill:not(.hi),#topo.focus .nd:not(.hi){{opacity:.15}}
+#topo.focus .lk:not(.hi),#topo.focus .pill:not(.hi),#topo.focus .port:not(.hi),#topo.focus .nd:not(.hi){{opacity:.15}}
 .legend{{display:flex;flex-wrap:wrap;gap:14px;color:var(--mute);font-size:12px;margin:8px 4px 0}}
 .legend i{{display:inline-block;width:26px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}}
 table{{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}}
@@ -515,13 +549,12 @@ td.bad,.s-down{{color:var(--down);font-weight:600}} .s-up{{color:var(--up)}} .m{
 </div>
 <div class="panel">
 <div class="bar">
-<label><input type="checkbox" id="o-if" checked> 인터페이스</label>
 <label><input type="checkbox" id="o-ip"> L3 링크 IP</label>
 <label><input type="checkbox" id="o-tun"> VXLAN 터널</label>
 <span class="sp"></span><span class="hint">장비를 클릭하면 연결만 강조하고 아래에 상세가 열립니다</span>
 <button type="button" id="z-fit">화면 맞춤</button><button type="button" id="z-100">원본 크기</button>
 </div>
-<div class="scroll" id="wrap"><svg id="topo" class="show-if" viewBox="-12 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="fabric topology">{svg}</svg></div>
+<div class="scroll" id="wrap"><svg id="topo" viewBox="-16 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="fabric topology">{svg}</svg></div>
 <div class="legend"><span><i style="border-color:var(--up)"></i>L3 P2P · BGP Established</span>
 <span><i style="border-color:var(--dci);border-top-width:5px"></i>DCI (core↔core)</span>
 <span><i style="border-color:var(--l2);border-top-style:dashed"></i>L2 · MLAG peer · Port-Channel 멤버</span>
@@ -545,7 +578,7 @@ td.bad,.s-down{{color:var(--down);font-weight:600}} .s-up{{color:var(--up)}} .m{
 const D={detail};
 const svg=document.getElementById('topo');
 const tog=(id,cls)=>{{const c=document.getElementById(id);const f=()=>svg.classList.toggle(cls,c.checked);c.addEventListener('change',f);f();}};
-tog('o-if','show-if');tog('o-ip','show-ip');tog('o-tun','show-tun');
+tog('o-ip','show-ip');tog('o-tun','show-tun');
 document.getElementById('z-fit').onclick=()=>svg.classList.add('fit');
 document.getElementById('z-100').onclick=()=>svg.classList.remove('fit');
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]));
@@ -556,7 +589,7 @@ function select(name){{
   if(!name||name===cur){{cur=null;svg.classList.remove('focus');det.hidden=true;return;}}
   cur=name;svg.classList.add('focus');
   const nb=new Set([name]);
-  svg.querySelectorAll('.lk,.ifl').forEach(e=>{{if(e.dataset.a===name||e.dataset.b===name){{e.classList.add('hi');nb.add(e.dataset.a);nb.add(e.dataset.b);}}}});
+  svg.querySelectorAll('.lk,.port').forEach(e=>{{if(e.dataset.a===name||e.dataset.b===name){{e.classList.add('hi');nb.add(e.dataset.a);nb.add(e.dataset.b);}}}});
   svg.querySelectorAll('.nd').forEach(e=>{{if(nb.has(e.dataset.n))e.classList.add('hi');if(e.dataset.n===name)e.classList.add('sel');}});
   const d=D[name];
   document.getElementById('d-title').textContent=d.name+' · '+d.role;
