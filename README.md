@@ -15,12 +15,12 @@
 ```bash
 |---global_vars
     |---global_dc_vars.yml
-|---lab guide
-    |---claude-code-guide.md
-    |---codex-cli-guide.md
-    |---evpn-vxlan-labs.md
-    |---git-github-guide.md
-    |---multi-domain-evpn-vxlan-guide.md
+|---.github/workflows
+    |---pr-validate.yml          # PR 자동 검증 (빌드 + drift + Batfish)
+|---batfish                      # Batfish 사전 검증 (preflight.py, selftest.py)
+|---ci                           # CI 스크립트 (offline_build.sh, config_diff_summary.sh)
+|---lab guide                    # 실습 가이드 (아래 표)
+|---mcp                          # EOS MCP Server, 토폴로지 HTML 생성
 |---playbooks
     |---build_dc1.yml
     |---build_dc2.yml
@@ -381,6 +381,22 @@ deploy_dc1_eapi: ## Deploy DC2 Spine/Leaf AVD generated configs via eAPI
 **호출되는 플레이북:**  `deploy_dc2_eapi.yml`
 
 **Inventory 파일:**  `dc2/inventory.yml`
+
+<br>
+<br>
+
+## 실습 가이드 한눈에 (`lab guide/`)
+
+| 문서 | 용도 |
+|---|---|
+| `evpn-vxlan-labs.md` | **메인 실습** Lab 1~6 (Day 2 운영) |
+| `multi-domain-evpn-vxlan-guide.md` | 멀티 도메인 EVPN/VXLAN 설계 설명 |
+| `batfish-preflight-guide.md` | 배포 **전** 설정 검증 (Batfish), 장애 주입 실습 §7-A(Null0)·§7-B(ACL) |
+| `ci-pipeline-guide.md` | PR 자동 검증 (GitHub Actions) |
+| `eos-mcp-server-guide.md` | AI 에이전트로 장비 조회, 토폴로지 HTML |
+| `claude-code-guide.md` / `codex-cli-guide.md` | AI 코딩 에이전트 사용법 |
+| `git-github-guide.md` | git/GitHub 입문 |
+| `avd-6.4-upgrade-verification.md`, `batfish-avd-anta-verification-report.md` | 검증 기록 (참고) |
 
 <br>
 <br>
