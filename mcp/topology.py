@@ -23,7 +23,7 @@ from datetime import datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SHOW_CMDS = ["show lldp neighbors", "show ip interface brief", "show bgp summary", "show mlag", "show vxlan vtep",
-             "show interfaces status", "show port-channel"]
+             "show interfaces status", "show port-channel", "show vlan", "show interfaces vxlan 1", "show vrf"]
 
 
 # --------------------------------------------------------------------------- MCP client (stdio JSON-RPC)
@@ -111,6 +111,27 @@ def ifshort(ifn):
     return ifn
 
 
+def _svc_vlans(show, ips):
+    """VXLAN에 매핑된(=서비스) VLAN만: {vlan: {name, vni, vrf, l3vni, gw, ports}}"""
+    vx = (show.get("show interfaces vxlan 1", {}).get("interfaces") or {}).get("Vxlan1") or {}
+    v2v = {k: v["vni"] for k, v in (vx.get("vlanToVniMap") or {}).items() if v.get("source") != "evpn"}
+    vrf2vni = {k: (v.get("vni") if isinstance(v, dict) else v) for k, v in (vx.get("vrfToVniMap") or {}).items()}
+    vlans = show.get("show vlan", {}).get("vlans") or {}
+    vrf_of = {}
+    for vrf, vd in (show.get("show vrf", {}).get("vrfs") or {}).items():
+        for i in vd.get("interfaces", []):
+            vrf_of[i] = vrf
+    out = {}
+    for vid, vni in v2v.items():
+        vd = vlans.get(vid, {})
+        ports = sorted(i for i in (vd.get("interfaces") or {})
+                       if i not in ("Cpu", "Vxlan1") and not i.startswith("Port-Channel1000"))
+        vrf = vrf_of.get(f"Vlan{vid}")
+        out[vid] = {"name": vd.get("name", ""), "vni": vni, "vrf": vrf, "l3vni": vrf2vni.get(vrf) if vrf else None,
+                    "gw": ips.get(f"Vlan{vid}"), "ports": [ifshort(x) for x in ports]}
+    return out
+
+
 def build_model(data):
     devs = data["devices"]
     nodes = {}
@@ -148,6 +169,7 @@ def build_model(data):
             "remote_vteps": remote_vteps, "ips": ips,
             "ifstatus": {k: {"status": v.get("linkStatus"), "desc": v.get("description", "")} for k, v in st.items()},
             "po_of": po_of,
+            "svc": _svc_vlans(s, ips),
         }
     links, seen = [], set()
     for name, d in devs.items():
@@ -194,7 +216,11 @@ def build_model(data):
                 tunnels.add(tuple(sorted((me, v))))
     for n in nodes.values():
         n.pop("peers")
-    return {"collected_at": data["collected_at"], "nodes": nodes, "links": links,
+    svc = {}
+    for n in sorted(nodes.values(), key=lambda n: n["name"]):
+        for vid, v in n["svc"].items():
+            svc.setdefault(int(vid), {})[n["name"]] = v
+    return {"collected_at": data["collected_at"], "nodes": nodes, "links": links, "svc": svc,
             "vteps": {k: sorted(v) for k, v in vtep_nodes.items()}, "tunnels": sorted(tunnels)}
 
 
@@ -217,15 +243,30 @@ def _y_of(model, name):
     return Y[_row_of(n)]
 
 
+def node_text(n):
+    """박스 안 네 줄: (글자 크기 px, 텍스트, css class)"""
+    role = {"brdr": "BORDER LEAF"}.get(n["role"], n["role"].upper())
+    l2 = f'Lo0 {n["lo0"].split("/")[0]}' if n["lo0"] else (n["mgmt_ip"] or "")
+    l3 = f'VTEP {n["lo1"].split("/")[0]}' if n["lo1"] else (f'mgmt {n["mgmt_ip"]}' if n["lo0"] and n["mgmt_ip"] else "")
+    l4 = role + (f' · AS {n["asn"]}' if n["asn"] else "")
+    return [(13, n["name"], "t1"), (11, l2, "t2"), (11, l3, "t2"), (9.5, l4, "t3")]
+
+
+def text_w(size, text):
+    return len(text) * size * 0.6          # IBM Plex Mono: 글자 폭 = 0.6em
+
+
 def node_widths(model):
-    """박스 폭 = 위/아래 변에 붙는 포트 수에 맞춘다 (spine은 아래에 6개)."""
+    """박스 폭 = max(안의 글씨 폭, 위/아래 변에 붙는 포트 수). 글씨가 박스 밖으로 나가지 않게."""
     cnt = {}
     for l in model["links"]:
         for me, other in ((l["a"], l["b"]), (l["b"], l["a"])):
             dy = _y_of(model, other) - _y_of(model, me)
             if abs(dy) > 40:
                 cnt[(me, dy > 0)] = cnt.get((me, dy > 0), 0) + 1
-    return {n: max(NW, max(cnt.get((n, True), 0), cnt.get((n, False), 0)) * (PORT_W + 4) + 20)
+    return {n: max(NW,
+                   max(cnt.get((n, True), 0), cnt.get((n, False), 0)) * (PORT_W + 4) + 20,
+                   max(text_w(sz, t) for sz, t, _ in node_text(model["nodes"][n])) + 24)
             for n in model["nodes"]}
 
 
@@ -394,17 +435,10 @@ def render_html(model):
         x, y = pos[n["name"]]
         w = W[n["name"]]
         bad = n["status"] != "success" or n["bgp_down"]
-        sub = n["lo0"] or n["mgmt_ip"] or ""
-        line3 = (f'AS {n["asn"]} · BGP {n["bgp_est"]}/{n["bgp_total"]}' if n["bgp_total"] else (n["mgmt_ip"] or ""))
-        role = {"brdr": "BORDER LEAF"}.get(n["role"], n["role"].upper())
-        if n["lo1"]:
-            role += f' · VTEP {n["lo1"].split("/")[0]}'
+        txt = "".join(f'<text class="{c}" x="{x + 12:.1f}" y="{y + dy:.0f}">{esc(t)}</text>'
+                      for (sz, t, c), dy in zip(node_text(n), (22, 40, 56, 71)) if t)
         nds.append(f'<g class="nd r-{n["role"]}{" bad" if bad else ""}" data-n="{esc(n["name"])}" tabindex="0">'
-                   f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{NH}" rx="9"/>'
-                   f'<text class="t1" x="{x + 10:.0f}" y="{y + 20:.0f}">{esc(n["name"])}</text>'
-                   f'<text class="t2" x="{x + 10:.0f}" y="{y + 37:.0f}">{esc(sub)}</text>'
-                   f'<text class="t2" x="{x + 10:.0f}" y="{y + 53:.0f}">{esc(line3)}</text>'
-                   f'<text class="t3" x="{x + 10:.0f}" y="{y + 69:.0f}">{esc(role)}</text></g>')
+                   f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{NH}" rx="9"/>{txt}</g>')
 
     zx2 = x_core2 + core_w + 100 - 10
     zones = [
@@ -451,6 +485,40 @@ def render_html(model):
         f'<tr><td>{esc(a)}</td><td>{esc(" / ".join(vt[a]))}</td><td>{esc(b)}</td><td>{esc(" / ".join(vt[b]))}</td>'
         f'<td>{"DC 간" if model["nodes"][vt[a][0]]["dc"] != model["nodes"][vt[b][0]]["dc"] else "DC 내부"}</td></tr>'
         for a, b in model["tunnels"])
+    # 서비스 VLAN 매트릭스: 행 = VLAN, 열 = VTEP 장비(DC별)
+    vt_dev = sorted((n for n in model["nodes"].values() if n["lo1"]),
+                    key=lambda n: (n["dc"], 0 if n["role"] == "leaf" else 1, n["name"]))
+    sv_head = "".join(f'<th class="dv{" dcsep" if i and vt_dev[i - 1]["dc"] != d["dc"] else ""}">'
+                      f'{esc(d["name"].split("-", 1)[1])}</th>' for i, d in enumerate(vt_dev))
+    sv_grp = (f'<th colspan="5"></th><th colspan="{sum(1 for d in vt_dev if d["dc"] == "dc1")}" class="grp">DC1</th>'
+              f'<th colspan="{sum(1 for d in vt_dev if d["dc"] == "dc2")}" class="grp dcsep">DC2</th><th></th>')
+    sv_rows = []
+    for vid, per in sorted(model["svc"].items()):
+        vals = list(per.values())
+        keyset = {(v["name"], v["vni"], v["vrf"], v["gw"]) for v in vals}
+        v0 = vals[0]
+        dcs = {model["nodes"][n]["dc"] for n in per}
+        scope = "양 DC" if len(dcs) == 2 else dcs.pop().upper() + "만"
+        cells = []
+        for i, d in enumerate(vt_dev):
+            sep = " dcsep" if i and vt_dev[i - 1]["dc"] != d["dc"] else ""
+            v = per.get(d["name"])
+            if not v:
+                cells.append(f'<td class="mx no{sep}">·</td>')
+            else:
+                acc = ", ".join(p for p in v["ports"] if not p.startswith("Po1000"))
+                cells.append(f'<td class="mx{sep}" title="{esc(d["name"])}: {esc(acc or "접속 포트 없음 (VXLAN만)")}">'
+                             f'{esc(acc) if acc else "●"}</td>')
+        ok = len(keyset) == 1
+        l3 = f' <span class="m">({v0["l3vni"]})</span>' if v0["l3vni"] else ""
+        sv_rows.append(
+            f'<tr><td><b>{vid}</b></td><td>{esc(v0["name"])}</td><td>{v0["vni"]}</td>'
+            f'<td>{esc(v0["vrf"] or "-")}{l3}</td>'
+            f'<td>{esc(v0["gw"] or "-")}</td>{"".join(cells)}'
+            f'<td class="{"s-up" if ok else "s-down"}">{scope}{"" if ok else " · 불일치"}</td></tr>')
+    sv_table = (f'<table class="svt"><thead><tr>{sv_grp}</tr><tr><th>VLAN</th><th>이름</th><th>L2VNI</th><th>VRF (L3VNI)</th>'
+                f'<th>Anycast GW</th>{sv_head}<th>범위</th></tr></thead><tbody>{"".join(sv_rows)}</tbody></table>')
+
     detail = {}
     for n in model["nodes"].values():
         ifs = []
@@ -469,7 +537,7 @@ def render_html(model):
         collected=esc(model["collected_at"]), width=f"{width:.0f}", height=f"{height:.0f}", svg=svg,
         n_dev=len(nodes), n_ok=ok, n_links=len(model["links"]), oper_up=oper_up, l3_up=up, l3_total=len(l3),
         dci_up=sum(1 for l in dci if l["bgp"] == "up"), dci_total=len(dci), n_tun=len(model["tunnels"]),
-        bgp_e=bgp_e, bgp_t=bgp_t, rows=rows, lrows=lrows, dci_rows=dci_rows, trows=trows,
+        bgp_e=bgp_e, bgp_t=bgp_t, rows=rows, sv_table=sv_table, n_svc=len(model["svc"]), lrows=lrows, dci_rows=dci_rows, trows=trows,
         detail=json.dumps(detail, ensure_ascii=False).replace("</", "<\\/"))
 
 
@@ -532,6 +600,8 @@ table{{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:t
 th,td{{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}} th{{color:var(--mute);font-weight:600}}
 td.bad,.s-down{{color:var(--down);font-weight:600}} .s-up{{color:var(--up)}} .m{{color:var(--mute)}}
 .po{{font-size:10.5px;padding:0 5px;border:1px dashed var(--l2);border-radius:4px;color:var(--mute)}}
+.svt th.dv,.svt td.mx{{text-align:center;min-width:44px}} .svt td.no{{color:var(--line)}} .svt th.grp{{text-align:center;color:var(--ink)}}
+.svt .dcsep{{border-left:2px solid var(--line)}}
 #detail[hidden]{{display:none}} #detail .facts{{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 4px 10px;font-size:12.5px}}
 #detail .facts span b{{color:var(--mute);font-weight:600;margin-right:6px}}
 .grid2{{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px}}
@@ -564,6 +634,8 @@ td.bad,.s-down{{color:var(--down);font-weight:600}} .s-up{{color:var(--up)}} .m{
 </div>
 <div class="panel" id="detail" hidden><h2 id="d-title"></h2><div class="facts" id="d-facts"></div>
 <div class="scroll"><table><thead><tr><th>인터페이스</th><th>IP</th><th>Po</th><th>상태</th><th>상대 장비</th><th>상대 IP</th><th>종류</th><th>BGP</th></tr></thead><tbody id="d-ifs"></tbody></table></div></div>
+<div class="panel scroll"><h2>서비스 VLAN ({n_svc}개 · VXLAN 매핑 기준)</h2>{sv_table}
+<p class="hint" style="margin:8px 4px 0">칸의 글자 = 그 VLAN이 나가는 호스트 접속 포트, ● = VLAN은 있지만 호스트 포트 없음(VXLAN으로만 전달), · = 없음. 이름·VNI·VRF·GW가 장비마다 다르면 "불일치".</p></div>
 <div class="grid2">
 <div class="panel scroll"><h2>DCI · core 연결</h2><table><thead><tr><th>A</th><th>B</th><th>종류</th><th>링크</th><th>BGP</th></tr></thead><tbody>{dci_rows}</tbody></table></div>
 <div class="panel scroll"><h2>VXLAN 터널 (show vxlan vtep)</h2><table><thead><tr><th>VTEP</th><th>장비</th><th>VTEP</th><th>장비</th><th>구분</th></tr></thead><tbody>{trows}</tbody></table>
