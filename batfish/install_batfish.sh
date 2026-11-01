@@ -9,7 +9,8 @@ set -euo pipefail
 
 BF_HOME="${BF_HOME:-/home/coder/project/labfiles/batfish-service}"
 IMAGE="${BF_IMAGE:-batfish/allinone}"
-TAG="${BF_TAG:-latest}"
+# CI(.github/workflows/pr-validate.yml)와 같은 버전으로 고정. latest는 예고 없이 바뀐다(2026-08 빌드부터 Java 21+ 필요).
+TAG="${BF_TAG:-2026.08.27.3685}"
 
 # 최신 batfish/allinone 이미지의 jar는 Java 21 이상으로 빌드되어 있다(class file 65+, 2026-08 빌드 기준).
 # ATD(Debian 12)의 apt에는 OpenJDK 17까지만 있고, 이미지에 들어 있는 JRE는 glibc 2.38이 필요해 호스트에서
