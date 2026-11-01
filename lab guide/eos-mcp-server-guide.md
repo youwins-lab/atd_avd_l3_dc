@@ -311,7 +311,7 @@ python3 mcp/topology.py --from-json mcp/topology.json   # 재수집 없이 그�
 
 | 표시 | 의미 |
 |---|---|
-| 링크 양 끝 `Et4` 라벨 | 그 장비 쪽 인터페이스 (Et=Ethernet, Po=Port-Channel) |
+| 박스 가장자리의 `Et4` 포트 배지 | 그 장비의 인터페이스. 선은 배지에서 출발하고 배지 테두리 색 = 선 색 (Et=Ethernet) |
 | 초록 실선 | L3 P2P, BGP Established |
 | **굵은 보라 선 + 중앙 라벨** | DCI(core↔core) — `DCI · 1.1.1.0/31 ↔ .1`, `eBGP up` |
 | 회색 점선 + `Po1000` | MLAG peer-link / core 간 Po16 / host 포트채널 멤버 |
@@ -323,10 +323,19 @@ python3 mcp/topology.py --from-json mcp/topology.json   # 재수집 없이 그�
 | 기능 | 방법 |
 |---|---|
 | 장비 상세 (인터페이스·IP·Po·상태·상대 장비·BGP) | 장비 클릭 → 연결만 강조 + 아래 상세 표 |
-| 표시 켜기/끄기 | `인터페이스` · `L3 링크 IP` · `VXLAN 터널` |
+| 표시 켜기/끄기 | `L3 링크 IP` · `VXLAN 터널` |
 | 크기 | `화면 맞춤` / `원본 크기` |
 
-그림 아래에 **DCI·core 연결 표**, **VXLAN 터널 표**, 장비 요약, LLDP 링크 전체 목록이 있습니다.
+장비 박스에는 이름 · Loopback0 · VTEP · 역할/AS만 표시합니다(BGP 세션 수는 장비 클릭 상세에).
+
+그림 아래 표:
+
+| 표 | 내용 |
+|---|---|
+| **서비스 VLAN** | VXLAN에 매핑된 VLAN × VTEP 장비 매트릭스 — VLAN·이름·L2VNI·VRF(L3VNI)·Anycast GW, 칸에는 호스트 접속 포트(`Po4`), 장비마다 설정이 다르면 `불일치` |
+| DCI · core 연결 | core↔core, border↔core 링크와 eBGP 상태 |
+| VXLAN 터널 | VTEP 쌍 목록 |
+| 장비 요약 / 링크 목록 | 전체 장비와 LLDP 링크 |
 
 **수집 항목**
 
@@ -339,6 +348,7 @@ python3 mcp/topology.py --from-json mcp/topology.json   # 재수집 없이 그�
 | `show port-channel` | 포트채널 멤버 (`Po` 라벨) |
 | `show bgp summary` | ASN, 링크별 BGP 상태 |
 | `show mlag`, `show vxlan vtep` | MLAG 상태, VXLAN 터널 |
+| `show vlan`, `show interfaces vxlan 1`, `show vrf` | 서비스 VLAN 표 (VLAN↔VNI, VRF↔L3VNI, 접속 포트) |
 
 **실행 결과 (AVD 6.4.0, Lab 1~6 배포 상태)**
 
@@ -347,6 +357,7 @@ python3 mcp/topology.py --from-json mcp/topology.json   # 재수집 없이 그�
 | 응답 장비 / 링크 up | 24/24 · 62/62 |
 | L3 링크 BGP / DCI eBGP | 32/32 · 2/2 |
 | VXLAN 터널 | 7개 — DC 간 터널은 **border leaf 사이 1개뿐** (EVPN Gateway 재발신 때문에 leaf는 원격 DC VTEP과 직접 터널을 맺지 않음) |
+| 서비스 VLAN | 7개 (10/20/30/40/50 → VRF A, 100 → VRF 100, 200 → VRF 200), 12대 모두 동일 설정, 양 DC 스트레치 |
 
 **Claude Code에 시키기**
 
