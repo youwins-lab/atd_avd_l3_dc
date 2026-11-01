@@ -104,9 +104,9 @@ l3leaf:
         # 주석을 해제하고 `make build_dc1` 후 `make preflight`를 돌리면 "VTEP 간 도달성"
         # 검사가 배포 전에 이걸 잡아낸다. 자세한 절차는
         # `lab guide/batfish-preflight-guide.md` §7-A 참고.
-        # static_routes:
-        #   - prefix: 10.1.1.102/32
-        #     interface: 'null0'
+        static_routes:
+          - prefix: 10.1.1.102/32
+            interface: 'null0'
         # ---------------------------------------------------------------------------
       filter:
         tenants: [ATD_DC, New-Tenant]

@@ -590,12 +590,14 @@ ip routing vrf A
 | VRF | Destination Prefix | Next Hop IP | Exit interface | Administrative Distance | Tag | Route Name | Metric |
 | --- | ------------------ | ----------- | -------------- | ----------------------- | --- | ---------- | ------ |
 | default | 0.0.0.0/0 | 192.168.0.1 | - | 1 | - | - | - |
+| default | 10.1.1.102/32 | - | null0 | 1 | - | - | - |
 
 #### Static Routes Device Configuration
 
 ```eos
 !
 ip route 0.0.0.0/0 192.168.0.1
+ip route 10.1.1.102/32 Null0
 ```
 
 ### Router BGP
