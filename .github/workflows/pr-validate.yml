@@ -23,7 +23,6 @@ concurrency:
 env:
   AVD_VERSION: "6.4.0"
   BATFISH_TAG: "2026.08.27.3685"
-  PYBATFISH_WHL: "pybatfish-2026.8.27.3685-py3-none-any.whl"
 
 jobs:
   build:
@@ -71,39 +70,29 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      batfish:
-        image: batfish/allinone:2026.08.27.3685
-        ports:
-          - 9996:9996
-          - 9997:9997
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install pybatfish (same build as the service image)
+      # pybatfish는 서버 빌드와 같은 버전이어야 하는데, 이미지 안 휠은 설치 후 삭제되고
+      # PyPI에도 같은 빌드가 없다. 그래서 이미지에 이미 설치된 pybatfish(파이썬 3.14)로
+      # 저장소를 마운트해 컨테이너 안에서 preflight를 돌린다.
+      - name: Start Batfish (${{ env.BATFISH_TAG }})
         run: |
-          # 이미지 안의 휠은 PyPI에 없는 빌드라 컨테이너에서 꺼내 설치한다(서버/클라이언트 버전 일치)
-          docker cp "${{ job.services.batfish.id }}:/${PYBATFISH_WHL}" .
-          pip install "./${PYBATFISH_WHL}"
-
-      - name: Wait for Batfish
-        run: |
+          docker run -d --name batfish -p 9996:9996 -p 9997:9997 \
+            -v "$GITHUB_WORKSPACE:/repo" "batfish/allinone:${BATFISH_TAG}"
           for i in $(seq 1 60); do
-            python3 -c "from pybatfish.client.session import Session; Session(host='localhost').list_networks()" \
+            docker exec batfish python3 -c \
+              "from pybatfish.client.session import Session; Session(host='localhost').list_networks()" \
               2>/dev/null && { echo "Batfish ready"; exit 0; }
             sleep 5
           done
-          echo "Batfish did not become ready"; docker logs "${{ job.services.batfish.id }}" | tail -50; exit 1
+          echo "Batfish did not become ready"; docker logs batfish | tail -50; exit 1
 
       - name: Preflight (all DCs, all labs)
-        run: python3 batfish/preflight.py --dc all --labs all --report batfish-report.md
+        run: docker exec -w /repo batfish python3 batfish/preflight.py --dc all --labs all --report batfish-report.md
 
       - name: Selftest (fault detection still works)
-        run: python3 batfish/selftest.py
+        run: docker exec -w /repo batfish python3 batfish/selftest.py
 
       - name: Report to summary
         if: always()

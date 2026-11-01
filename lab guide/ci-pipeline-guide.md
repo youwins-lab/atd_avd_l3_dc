@@ -18,7 +18,7 @@
 | Job | 내용 | PR 차단 |
 |---|---|---|
 | `build` | AVD 6.4.0 오프라인 빌드 → 커밋된 `intended/`·`documentation/`과 다르면 실패(drift). 장비별 config diff를 Job Summary에 표시 | ✔ |
-| `batfish` | `batfish/allinone:2026.08.27.3685` 서비스 컨테이너 + 같은 빌드의 pybatfish로 `preflight.py --dc all --labs all`, `selftest.py` | ✔ |
+| `batfish` | `batfish/allinone:2026.08.27.3685` 컨테이너에 저장소를 마운트하고, 컨테이너 안 pybatfish(서버와 같은 빌드)로 `preflight.py --dc all --labs all`, `selftest.py` 실행 | ✔ |
 | `avd-next` | 최신 AVD로 빌드했을 때 config가 바뀌는지 참고용 보고 | ✘ (`continue-on-error`) |
 
 ### 오프라인 빌드가 가능한 이유
@@ -49,4 +49,5 @@ Settings → Branches → `main` 규칙에서 *Require status checks*로 `AVD bu
 ### Batfish 버전 고정
 
 `batfish/install_batfish.sh`의 기본 태그와 워크플로의 `BATFISH_TAG`는 같은 값(`2026.08.27.3685`)이다.
-올릴 때는 두 곳을 함께 바꾸고, 이미지 안 pybatfish 휠 이름(`PYBATFISH_WHL`)도 맞춘다.
+올릴 때는 두 곳을 함께 바꾼다. 이미지 안의 pybatfish 휠은 설치 직후 삭제되고(레이어 whiteout) PyPI에도
+같은 빌드가 없기 때문에, CI는 휠을 꺼내지 않고 컨테이너에 이미 설치된 pybatfish로 검사를 돌린다.
