@@ -1,0 +1,5 @@
+# CI(.github/workflows/pr-validate.yml)용 AVD 툴체인 — setup_env.sh와 같은 버전으로 맞춘다
+ansible-core==2.16.14
+pyavd[ansible-collection]==6.4.0
+pyavd-utils==0.0.7
+anta==1.10.0

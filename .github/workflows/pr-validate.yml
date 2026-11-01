@@ -39,11 +39,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: ci/requirements.txt
 
       - name: Install AVD toolchain
         run: |
-          pip install "ansible-core==2.16.14" "pyavd[ansible-collection]==${AVD_VERSION}" \
-                      "pyavd-utils==0.0.7" "anta==1.10.0"
+          pip install -r ci/requirements.txt
           ansible-galaxy collection install "arista.avd:==${AVD_VERSION}"
 
       - name: Offline build + drift check
