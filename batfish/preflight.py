@@ -5,7 +5,8 @@
 `dci_configs/`, `host_configs/` 를 하나의 Batfish 스냅샷으로 묶어, **장비에 아무것도 배포하지
 않은 상태에서** 설정만 보고 검증한다.
 
-  공통 검사   : 파싱 / 미정의 참조 / 중복 IP / L1-L3 토폴로지 / MTU / BGP 세션
+  공통 검사   : 파싱 / 미정의 참조 / 중복 IP / L1-L3 토폴로지 / MTU / BGP 세션 /
+                VTEP 도달성(ICMP·UDP 4789) / ACL 라인 도달성 / DCI 경계 ACL 정책
   시나리오 검사: evpn-vxlan-labs.md 의 Lab 1~6 각각이 의도한 결과가 설정에 반영됐는지
 
 사용법:
@@ -275,9 +276,23 @@ class Preflight:
         VTEP 주소만 막히면 **BGP 세션은 전부 Established인데 트래픽만 죽는다**. 그 상태를
         잡아내는 검사다 — `show bgp evpn summary`로는 절대 보이지 않는다.
         """
+        self._vtep_reach("VTEP 간 도달성", dict(applications="icmp"), "ICMP")
+
+    def check_vxlan_udp(self):
+        """VTEP 사이에 실제 VXLAN 패킷(UDP 4789)이 지나갈 수 있는가.
+
+        `VTEP 간 도달성`은 ICMP로 본다. 경로상 ACL이 ICMP·BGP는 허용하고 UDP 4789만 막으면
+        ping도 되고 BGP도 Established인데 VXLAN 트래픽만 죽는다 — 운영자가 가장 늦게
+        의심하는 유형이라 데이터 평면 프로토콜 그대로 따로 확인한다.
+        """
+        self._vtep_reach("VXLAN(UDP 4789) 도달성",
+                         dict(ipProtocols="udp", srcPorts="1024-65535", dstPorts="4789"),
+                         "UDP 4789")
+
+    def _vtep_reach(self, name, hdr, proto_label):
         vni = self.bf.q.vxlanVniProperties().answer().frame()
         if len(vni) == 0:
-            self.add("공통", "VTEP 간 도달성", SKIP, "스냅샷에 VXLAN VTEP이 없음")
+            self.add("공통", name, SKIP, "스냅샷에 VXLAN VTEP이 없음")
             return
         vtep_ips = sorted({str(r.Local_VTEP_IP) for r in vni.itertuples() if r.Local_VTEP_IP})
         nodes = sorted({str(r.Node) for r in vni.itertuples()})
@@ -287,7 +302,7 @@ class Preflight:
 
         ans = self.bf.q.reachability(
             pathConstraints=PathConstraints(startLocation=start),
-            headers=HeaderConstraints(dstIps=",".join(vtep_ips), applications="icmp"),
+            headers=HeaderConstraints(dstIps=",".join(vtep_ips), **hdr),
             actions="failure",
         ).answer().frame()
 
@@ -298,12 +313,95 @@ class Preflight:
                 tr = r["Traces"][0]
                 detail.append(f"{r['Flow'].ingressNode} {r['Flow'].srcIp} → {r['Flow'].dstIp}: "
                               f"{tr.disposition} ({' → '.join(h.node for h in tr.hops)})")
-            self.add("공통", "VTEP 간 도달성", FAIL,
-                     f"VTEP {len(vtep_ips)}개 중 도달 불가 조합 {len(ans)}건 — VXLAN 터널 단절",
+            self.add("공통", name, FAIL,
+                     f"{proto_label}: VTEP {len(vtep_ips)}개 중 도달 불가 조합 {len(ans)}건 — VXLAN 터널 단절",
                      sorted(detail))
         else:
-            self.add("공통", "VTEP 간 도달성", PASS,
-                     f"VTEP {len(vtep_ips)}개 × 출발 노드 {len(nodes)}대 = {pairs}개 조합 모두 도달 가능")
+            self.add("공통", name, PASS,
+                     f"{proto_label}: VTEP {len(vtep_ips)}개 × 출발 노드 {len(nodes)}대 = {pairs}개 조합 모두 도달 가능")
+
+    def check_acl_lines(self):
+        """앞줄에 가려 절대 매칭되지 않는 ACL 라인(shadowing)이 있는가.
+
+        `deny tcp any any`가 `permit tcp any any eq bgp`보다 앞에 오는 식의 순서 실수는
+        문법상 정상이라 장비가 그대로 받아들인다. Batfish filterLineReachability로 잡는다.
+        """
+        acls = self.bf.q.namedStructures(structureTypes="IP_ACCESS_LIST").answer().frame()
+        if len(acls) == 0:
+            self.add("공통", "ACL 라인 도달성", SKIP, "스냅샷에 IP ACL이 없음")
+            return
+        df = self.bf.q.filterLineReachability().answer().frame()
+        if len(df):
+            self.add("공통", "ACL 라인 도달성", FAIL,
+                     f"절대 매칭되지 않는 ACL 라인 {len(df)}건 (앞 라인에 가려짐)",
+                     [f"{', '.join(map(str, r.Sources))}: '{r.Unreachable_Line}' ← "
+                      f"가린 라인 {list(r.Blocking_Lines)} ({r.Reason})" for r in df.itertuples()])
+        else:
+            self.add("공통", "ACL 라인 도달성", PASS,
+                     f"IP ACL {len(acls)}개(장비별)의 모든 라인이 매칭 가능")
+
+    # DCI 경계 ACL이 반드시 통과시켜야 하는 것 / 반드시 막아야 하는 것
+    DCI_ACL_MUST_PERMIT = [
+        ("ICMP", dict(applications="icmp")),
+        ("BGP 접속 (dst TCP 179)", dict(ipProtocols="tcp", srcPorts="40000", dstPorts="179")),
+        ("BGP 응답 (src TCP 179)", dict(ipProtocols="tcp", srcPorts="179", dstPorts="40000")),
+        ("BFD multihop (UDP 4784)", dict(ipProtocols="udp", srcPorts="49152", dstPorts="4784")),
+        ("VXLAN (UDP 4789)", dict(ipProtocols="udp", srcPorts="50000", dstPorts="4789")),
+    ]
+    DCI_ACL_MUST_DENY = [
+        ("SSH (TCP 22)", dict(ipProtocols="tcp", srcPorts="40000", dstPorts="22")),
+        ("Telnet (TCP 23)", dict(ipProtocols="tcp", srcPorts="40000", dstPorts="23")),
+        ("SNMP (UDP 161)", dict(ipProtocols="udp", srcPorts="40000", dstPorts="161")),
+    ]
+
+    def check_dci_acl_policy(self):
+        """Border Leaf의 DCI(core) 방향 인터페이스에 걸린 인바운드 ACL이 정책대로 동작하는가.
+
+        ACL이 하나도 없으면 SKIP(실습 전 기본 상태). 하나라도 있으면
+          1) 모든 DCI 방향 인터페이스에 빠짐없이 같은 ACL이 걸렸는지
+          2) 운영에 필요한 트래픽은 PERMIT, 관리 프로토콜은 DENY인지 (testFilters)
+        를 본다.
+        """
+        ifp = self.bf.q.interfaceProperties(
+            nodes="/brdr/", properties="Description,Incoming_Filter_Name"
+        ).answer().frame()
+        dci = [(str(r.Interface).split("[")[0], str(r.Interface).split("[")[1][:-1],
+                r.Incoming_Filter_Name)
+               for r in ifp.itertuples() if re.search(r"_s\d-core\d_", str(r.Description or ""))]
+        applied = [d for d in dci if d[2]]
+        if not applied:
+            self.add("공통", "DCI ACL 정책", SKIP,
+                     f"Border Leaf DCI 방향 인터페이스 {len(dci)}개에 인바운드 ACL 없음")
+            return
+        detail, bad = [], 0
+        sites = {n[:2] for n, _, _ in applied}
+        missing = [f"{n}[{i}]: ACL 없음" for n, i, f in dci if not f and n[:2] in sites]
+        names = {f for _, _, f in applied}
+        if missing or len(names) > 1:
+            bad += len(missing) + (len(names) > 1)
+            detail += missing + ([f"인터페이스마다 다른 ACL: {sorted(names)}"] if len(names) > 1 else [])
+
+        for node, acl in sorted({(n, f) for n, _, f in applied}):
+            for want, cases in (("PERMIT", self.DCI_ACL_MUST_PERMIT), ("DENY", self.DCI_ACL_MUST_DENY)):
+                for label, hdr in cases:
+                    f = self.bf.q.testFilters(
+                        headers=HeaderConstraints(srcIps="10.1.1.102", dstIps="10.1.1.2", **hdr),
+                        nodes=node, filters=acl,
+                    ).answer().frame()
+                    got = str(f.iloc[0]["Action"]) if len(f) else "?"
+                    line = str(f.iloc[0]["Line_Content"]) if len(f) else ""
+                    if got != want:
+                        bad += 1
+                        detail.append(f"{node} {acl}: {label} 기대 {want} / 실제 {got} ({line})")
+        if bad:
+            self.add("공통", "DCI ACL 정책", FAIL,
+                     f"{len(applied)}개 인터페이스 중 정책 위반 {bad}건", detail)
+        else:
+            self.add("공통", "DCI ACL 정책", PASS,
+                     f"{len(applied)}개 인터페이스에 '{next(iter(names))}' 적용, "
+                     f"필수 허용 {len(self.DCI_ACL_MUST_PERMIT)}종 PERMIT / 관리 프로토콜 "
+                     f"{len(self.DCI_ACL_MUST_DENY)}종 DENY 확인",
+                     [f"{n}[{i}] ← {f}" for n, i, f in applied])
 
     # ------------------------------------------------------------------ 랩 시나리오
     def _svi_check(self, lab, label, vlans, vrf_of):
@@ -554,7 +652,8 @@ class Preflight:
         print("[공통 검사]")
         for fn in (self.check_parse, self.check_undefined_refs, self.check_duplicate_ip,
                    self.check_topology, self.check_mtu, self.check_bgp,
-                   self.check_vtep_reachability):
+                   self.check_vtep_reachability, self.check_vxlan_udp,
+                   self.check_acl_lines, self.check_dci_acl_policy):
             fn()
         for n in labs:
             print(f"\n[Lab {n} 시나리오 검사]")
