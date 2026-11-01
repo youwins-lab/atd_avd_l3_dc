@@ -218,6 +218,16 @@ connects to a device, so it is safe to run against a live fabric. The non-obviou
   the matching check flips to FAIL. Run it after changing any check.
 - `batfish/snapshots/` and `batfish/reports/` are regenerated per run and gitignored.
 
+## CI (GitHub Actions)
+
+- `.github/workflows/pr-validate.yml` runs on every PR to main on GitHub-hosted runners (no lab access, no secrets):
+  offline AVD build + drift check (`ci/offline_build.sh`), config diff summary (`ci/config_diff_summary.sh`),
+  Batfish preflight + selftest, and an informational latest-AVD build.
+- Any `group_vars` change must be committed together with the regenerated `sites/dc*/intended` and `documentation`, or the drift check fails.
+- Build playbooks use `gather_facts: false`; keep it that way so builds stay offline.
+- The repo is public: never run a self-hosted runner on `pull_request`, and never put the lab password or vault key in GitHub secrets.
+- Details: `lab guide/ci-pipeline-guide.md`.
+
 ## Conventions
 
 - Ansible connection is `httpapi` over eAPI (port 443) for all real devices; CVP-only playbooks use

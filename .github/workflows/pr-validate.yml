@@ -1,0 +1,143 @@
+# PR 검증 (1단계) — GitHub 호스티드 러너에서만 실행되며 ATD 랩에는 접속하지 않는다.
+#   build   : AVD 6.4.0 오프라인 빌드 → 커밋된 intended/documentation과 일치하는지(drift) 확인
+#             + 장비 config diff를 PR 요약(Job Summary)에 표시
+#   batfish : 생성된 config로 Batfish preflight(라우팅/ACL 정적 분석) + selftest
+#   avd-next: (참고용, 실패해도 PR을 막지 않음) 최신 AVD로 빌드했을 때 config가 어떻게 바뀌는지
+#
+# 공개 저장소이므로 pull_request 트리거 + contents: read 권한만 사용하고, 비밀값은 전혀 쓰지 않는다.
+# 랩 배포(2단계)는 별도 워크플로/셀프호스티드 러너에서 승인 후에만 돈다.
+name: pr-validate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  AVD_VERSION: "6.4.0"
+  BATFISH_TAG: "2026.08.27.3685"
+  PYBATFISH_WHL: "pybatfish-2026.8.27.3685-py3-none-any.whl"
+
+jobs:
+  build:
+    name: AVD build + drift check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # config diff 요약에 base 브랜치 이력이 필요
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install AVD toolchain
+        run: |
+          pip install "ansible-core==2.16.14" "pyavd[ansible-collection]==${AVD_VERSION}" \
+                      "pyavd-utils==0.0.7" "anta==1.10.0"
+          ansible-galaxy collection install "arista.avd:==${AVD_VERSION}"
+
+      - name: Offline build + drift check
+        run: ./ci/offline_build.sh
+
+      - name: Config diff summary
+        if: github.event_name == 'pull_request'
+        run: |
+          ./ci/config_diff_summary.sh "origin/${{ github.base_ref }}" >> "$GITHUB_STEP_SUMMARY"
+          git diff "origin/${{ github.base_ref }}"...HEAD -- \
+            'sites/*/intended/configs' 'sites/*/dci_configs' 'sites/*/host_configs' > config-diff.patch
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intended-configs
+          path: |
+            sites/*/intended/configs
+            sites/*/intended/structured_configs
+            config-diff.patch
+          if-no-files-found: ignore
+
+  batfish:
+    name: Batfish preflight
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      batfish:
+        image: batfish/allinone:2026.08.27.3685
+        ports:
+          - 9996:9996
+          - 9997:9997
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pybatfish (same build as the service image)
+        run: |
+          # 이미지 안의 휠은 PyPI에 없는 빌드라 컨테이너에서 꺼내 설치한다(서버/클라이언트 버전 일치)
+          docker cp "${{ job.services.batfish.id }}:/${PYBATFISH_WHL}" .
+          pip install "./${PYBATFISH_WHL}"
+
+      - name: Wait for Batfish
+        run: |
+          for i in $(seq 1 60); do
+            python3 -c "from pybatfish.client.session import Session; Session(host='localhost').list_networks()" \
+              2>/dev/null && { echo "Batfish ready"; exit 0; }
+            sleep 5
+          done
+          echo "Batfish did not become ready"; docker logs "${{ job.services.batfish.id }}" | tail -50; exit 1
+
+      - name: Preflight (all DCs, all labs)
+        run: python3 batfish/preflight.py --dc all --labs all --report batfish-report.md
+
+      - name: Selftest (fault detection still works)
+        run: python3 batfish/selftest.py
+
+      - name: Report to summary
+        if: always()
+        run: |
+          [ -f batfish-report.md ] && cat batfish-report.md >> "$GITHUB_STEP_SUMMARY" || echo "리포트 없음" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: batfish-report
+          path: batfish-report.md
+          if-no-files-found: ignore
+
+  avd-next:
+    name: Next AVD version (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build with latest AVD
+        run: |
+          pip install "ansible-core>=2.16,<2.19" "pyavd[ansible-collection]" anta
+          ansible-galaxy collection install arista.avd --upgrade
+          ver=$(python3 -c "import pyavd; print(pyavd.__version__)")
+          ./ci/offline_build.sh --no-check
+          {
+            echo "## 최신 AVD(${ver})로 빌드 시 config 변화 (참고용)"
+            if git diff --quiet -- sites/*/intended/configs; then
+              echo "변화 없음 — ${ver}로 올려도 장비 config는 동일합니다."
+            else
+              echo '```'; git --no-pager diff --stat -- sites/*/intended/configs; echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
