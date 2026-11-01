@@ -289,77 +289,72 @@ sites/dc1/intended/configs/s1-brdr1.cfg와 s1-brdr1의 실제 running-config를 
 
 ### 7-4. 주요 정보로 토폴로지 그리기 — HTML 한 장
 
-질문 하나로 장비 한두 대를 보는 것을 넘어, **24대 전체의 주요 정보를 모아 토폴로지 그림**으로 보고 싶을 때가
-있습니다. `mcp/topology.py`는 Claude Code가 쓰는 것과 **같은 `eos-mcp-server`를 stdio로 직접 띄워서**
-MCP 도구(`eos_get_facts`, `eos_run_show`)만 호출하고, 결과를 브라우저에서 바로 열 수 있는 HTML 파일
-하나로 만듭니다. MCP 서버를 그대로 쓰므로 여기서도 장비 설정은 바뀌지 않습니다(읽기 전용).
+> **핵심** — `python3 mcp/topology.py` 한 줄로 24대의 연결·인터페이스·BGP·VXLAN 상태를 그림 한 장으로 본다.
+> Claude Code와 같은 `eos-mcp-server`(읽기 전용)만 호출하므로 장비 설정은 바뀌지 않는다.
 
-| 수집 항목 (MCP 도구) | 토폴로지에서 쓰는 곳 |
+```bash
+python3 mcp/topology.py                                 # 수집 + mcp/topology.html 생성 (약 2초)
+python3 mcp/topology.py --targets dc1                   # DC1만
+python3 mcp/topology.py --from-json mcp/topology.json   # 재수집 없이 그림만 다시
+```
+
+생성된 `mcp/topology.html`은 IDE에서 우클릭 → **Open Preview**(또는 브라우저)로 엽니다.
+
+**그림 구성**
+
+```
+ DC1 (spine / leaf·border leaf / host)  │  DCI·CORE  │  DC2
+                                         │ s1-core1 ━━ DCI ━━ s2-core1
+                                         │   ┆Po16          ┆Po16
+                                         │ s1-core2 ━━ DCI ━━ s2-core2
+```
+
+| 표시 | 의미 |
 |---|---|
-| `eos_get_facts` (`show version`) | 장비 카드의 모델·EOS 버전 |
-| `show lldp neighbors` | **물리 링크** — 장비 사이의 선 |
-| `show ip interface brief` | 링크 양 끝 IP, Loopback0(Router-ID)·Loopback1(VTEP) |
-| `show bgp summary` | ASN, 세션 수, **링크별 BGP 상태**(P2P IP ↔ BGP 피어 IP 매칭) |
-| `show mlag` | MLAG 상태와 도메인(LeafPair1 등) |
-| `show vxlan vtep` | 각 leaf/border leaf가 보는 원격 VTEP 목록 |
+| 링크 양 끝 `Et4` 라벨 | 그 장비 쪽 인터페이스 (Et=Ethernet, Po=Port-Channel) |
+| 초록 실선 | L3 P2P, BGP Established |
+| **굵은 보라 선 + 중앙 라벨** | DCI(core↔core) — `DCI · 1.1.1.0/31 ↔ .1`, `eBGP up` |
+| 회색 점선 + `Po1000` | MLAG peer-link / core 간 Po16 / host 포트채널 멤버 |
+| 빨간 점선, 빨간 테두리 | 인터페이스 down 또는 BGP down |
+| 주황 곡선 (토글) | VXLAN 터널 (`show vxlan vtep`, MLAG 쌍은 하나로 묶음) |
 
-저장소 루트에서 실행합니다(§3 설치, §5 probe가 끝난 상태여야 합니다).
+**조작**
 
-```bash
-python3 mcp/topology.py
-```
+| 기능 | 방법 |
+|---|---|
+| 장비 상세 (인터페이스·IP·Po·상태·상대 장비·BGP) | 장비 클릭 → 연결만 강조 + 아래 상세 표 |
+| 표시 켜기/끄기 | `인터페이스` · `L3 링크 IP` · `VXLAN 터널` |
+| 크기 | `화면 맞춤` / `원본 크기` |
 
-```
-  collected dc1: 12 devices
-  collected dc2: 12 devices
-24 devices, 62 links -> /home/coder/project/labfiles/atd_avd_l3_dc/mcp/topology.html
-```
+그림 아래에 **DCI·core 연결 표**, **VXLAN 터널 표**, 장비 요약, LLDP 링크 전체 목록이 있습니다.
 
-24대 기준 수집은 1초 남짓 걸립니다. 만들어진 `mcp/topology.html`을 IDE 탐색기에서 우클릭 → **Open
-Preview**(또는 다운로드 후 브라우저)로 엽니다. 수집 원본은 `mcp/topology.json`에 같이 저장되므로,
-장비에 다시 접속하지 않고 그림만 다시 그릴 수도 있습니다.
+**수집 항목**
 
-```bash
-python3 mcp/topology.py --targets dc1          # DC1만 (그룹/장비 이름은 mcp/inventory.yml 기준)
-python3 mcp/topology.py --from-json mcp/topology.json   # 수집 없이 HTML만 다시 생성
-```
+| MCP 호출 | 쓰는 곳 |
+|---|---|
+| `eos_get_facts` | 모델, EOS 버전 |
+| `show lldp neighbors` | 물리 링크와 양 끝 인터페이스 |
+| `show ip interface brief` | 링크 IP, Loopback0/1 |
+| `show interfaces status` | 인터페이스 up/down, description |
+| `show port-channel` | 포트채널 멤버 (`Po` 라벨) |
+| `show bgp summary` | ASN, 링크별 BGP 상태 |
+| `show mlag`, `show vxlan vtep` | MLAG 상태, VXLAN 터널 |
 
-**그림을 읽는 법**
-
-- 두 DC가 좌우 대칭으로 놓이고, 위에서부터 **core → spine → leaf/border leaf → host** 순서입니다.
-  core끼리 가운데에서 DCI로 이어집니다.
-- **초록 실선**: IP가 붙은 P2P 링크이고 양 끝의 BGP 세션이 `Established`.
-  **굵은 보라 선**: DCI(core ↔ core). **빨간 점선**: IP는 있는데 BGP 세션이 다운.
-  **회색 점선**: MLAG peer-link, host 포트채널 멤버처럼 IP가 없는 L2 링크.
-- BGP 세션이 하나라도 내려간 장비는 카드 테두리가 빨갛게 표시되고, 실행 마지막에
-  `주의(BGP 다운 또는 응답 실패): ...`로도 출력됩니다.
-- 장비나 링크에 마우스를 올리면 mgmt IP, ASN, Router-ID, VTEP, 원격 VTEP 목록, 링크 양 끝 인터페이스/IP가 보입니다.
-- 그림 아래에 장비 요약 표와 LLDP 링크 전체 목록이 있습니다.
-
-AVD 6.4.0으로 Lab 1~6까지 배포한 상태에서 실제로 실행한 결과는 다음과 같습니다.
+**실행 결과 (AVD 6.4.0, Lab 1~6 배포 상태)**
 
 | 항목 | 결과 |
 |---|---|
-| MCP 응답 장비 | 24/24 |
-| LLDP 링크 | 62개 (L3 P2P 32 · DCI 2 · MLAG/peer 20 · host L2 8) |
-| L3/DCI 링크 BGP | 34/34 `Established` |
-| 원격 VTEP | DC1 leaf는 `10.1.1.2`(자기 DC border leaf)와 같은 DC의 다른 leaf pair VTEP만 보임 — DC2 VTEP은 보이지 않음 (Lab 3의 스티칭) |
+| 응답 장비 / 링크 up | 24/24 · 62/62 |
+| L3 링크 BGP / DCI eBGP | 32/32 · 2/2 |
+| VXLAN 터널 | 7개 — DC 간 터널은 **border leaf 사이 1개뿐** (EVPN Gateway 재발신 때문에 leaf는 원격 DC VTEP과 직접 터널을 맺지 않음) |
 
-Claude Code 안에서 같은 일을 시킬 수도 있습니다. 스크립트가 이미 있으므로 실행을 맡기거나, MCP 도구로
-직접 모아 달라고 하면 됩니다.
+**Claude Code에 시키기**
 
 ```
-python3 mcp/topology.py를 실행해서 토폴로지 HTML을 만들고, BGP가 다운된 링크나 응답이 없는 장비가
-있으면 알려줘
+python3 mcp/topology.py를 실행해서 토폴로지 HTML을 만들고, down된 링크나 BGP 세션이 있으면 알려줘
 ```
 
-```
-EOS MCP로 dc1, dc2 전체의 LLDP 이웃, Loopback0/1, BGP 요약을 모아서 장비별 표와
-링크 목록을 정리해줘. 결과를 토폴로지 그림이 들어간 HTML 파일로도 저장해줘
-```
-
-> `mcp/topology.html`과 `mcp/topology.json`은 실행할 때마다 다시 만들어지는 산출물이라 `.gitignore`에
-> 등록되어 있습니다.
+> `mcp/topology.html`, `mcp/topology.json`은 실행마다 다시 만들어지는 산출물이라 `.gitignore`에 있습니다.
 
 <br>
 

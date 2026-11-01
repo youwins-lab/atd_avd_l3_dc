@@ -10,7 +10,7 @@
 | `inventory.yml` | 장비/그룹 목록 (`dc1`, `dc2`, `dc1_fabric`, `dc1_leafs`, `dc2_dci`, …). CVP 제외 |
 | `eos-mcp-server.yml` | 타임아웃·동시성 등 런타임 설정 |
 | `run-eos-mcp.sh` | 실행 래퍼. 랩 비밀번호를 code-server config에서 읽어 `EOS_MCP_PASSWORD`로 주입 (파일에 저장 안 함) |
-| `topology.py` | MCP 도구로 24대의 facts/LLDP/IP/BGP/MLAG/VTEP을 수집해 `topology.html`(토폴로지 그림 + 표) 생성. `lab guide/eos-mcp-server-guide.md` §7-4 |
+| `topology.py` | MCP 도구로 24대의 facts/LLDP/IP/인터페이스 상태/포트채널/BGP/MLAG/VTEP을 수집해 `topology.html` 생성 (링크 양끝 인터페이스, DCI core 구역, VXLAN 터널, 장비 클릭 상세). `lab guide/eos-mcp-server-guide.md` §7-4 |
 
 Claude Code 등록은 저장소 루트의 `.mcp.json`(project scope)에 되어 있습니다.
 
