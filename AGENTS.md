@@ -16,7 +16,7 @@ python3 -m pip install --upgrade \
   "pyavd==6.4.0" \
   "pyavd-utils==0.0.7" \
   "python-socks[asyncio]>=2.7.2" \
-  "anta==1.10.0" \
+  "anta[cli]==1.11.0" \
   "distlib>=0.3.9"
 ansible-galaxy collection install arista.avd:==6.4.0
 ```

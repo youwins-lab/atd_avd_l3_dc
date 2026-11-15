@@ -14,7 +14,7 @@ python3 -m pip install --upgrade \
   "pyavd==${AVD_VERSION}" \
   "pyavd-utils==0.0.7" \
   "python-socks[asyncio]>=2.7.2" \
-  "anta==1.10.0" \
+  "anta[cli]==1.11.0" \
   "distlib>=0.3.9"
 
 echo "== [3/3] Claude Code CLI 설치 =="

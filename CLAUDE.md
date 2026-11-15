@@ -16,7 +16,7 @@ python3 -m pip install --upgrade \
   "pyavd==6.4.0" \
   "pyavd-utils==0.0.7" \
   "python-socks[asyncio]>=2.7.2" \
-  "anta==1.10.0" \
+  "anta[cli]==1.11.0" \
   "distlib>=0.3.9"
 ansible-galaxy collection install arista.avd:==6.4.0
 ```
@@ -74,6 +74,13 @@ All commands run from the repo root and take `-i sites/dc{1,2}/inventory.yml` im
 - `make preflight` (or `preflight_dc1` / `preflight_dc2`) — run `batfish/preflight.py`: builds a Batfish snapshot
   from `intended/configs/` + `dci_configs/` + `host_configs/` and validates it **without touching any device**.
   `make preflight_selftest` injects faults into snapshot copies to prove the checks still catch them.
+- `make psirt` (or `psirt_dc1` / `psirt_dc2`) — run `psirt/run_psirt.py`: derives an ANTA inventory from the
+  *active* hosts in `sites/dc{n}/inventory.yml` (CVP excluded, so it follows Lab-stage commenting of Border Leafs),
+  writes it to `sites/dc{n}/anta/psirt_inventory.yml`, runs `anta psirt` (read-only `show` commands, PREVIEW
+  feature) and writes `sites/dc{n}/anta/reports/psirt_report.{md,csv}` (both gitignored). Runs with
+  `--ignore-status`, so affected advisories never fail `make`. Needs `anta[cli]`, not bare `anta` — without the
+  extra the `anta` binary exits with "required dependencies were not installed". Password lookup:
+  `ANTA_PASSWORD` → `LABPASSPHRASE` → code-server `config.yaml`. See `lab guide/anta-psirt-guide.md`.
 - Recommended per-lab loop: edit `group_vars` → `make build_dc{n}` → `make preflight` → `make deploy_dc{n}_*` →
   `make verify_dc{n}`.
 
