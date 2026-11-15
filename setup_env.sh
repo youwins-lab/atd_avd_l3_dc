@@ -3,7 +3,7 @@
 # Ansible AVD/CVP collection, pyavd/anta 관련 python 패키지, Claude Code CLI를 설치합니다.
 set -euo pipefail
 
-AVD_VERSION="6.4.0"
+AVD_VERSION="6.5.0"
 CVP_VERSION="3.12.0"
 
 echo "== [1/3] Ansible Collection 설치 (arista.avd:==${AVD_VERSION}, arista.cvp:==${CVP_VERSION}) =="
@@ -12,7 +12,7 @@ ansible-galaxy collection install "arista.avd:==${AVD_VERSION}" "arista.cvp:==${
 echo "== [2/3] Python 패키지 설치 (pyavd, anta, 의존성 패키지) =="
 python3 -m pip install --upgrade \
   "pyavd==${AVD_VERSION}" \
-  "pyavd-utils==0.0.7" \
+  "pyavd-utils==0.0.13" \
   "python-socks[asyncio]>=2.7.2" \
   "anta[cli]==1.11.0" \
   "distlib>=0.3.9"

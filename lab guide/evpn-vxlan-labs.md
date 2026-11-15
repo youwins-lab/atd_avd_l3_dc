@@ -2,7 +2,7 @@
 
 이 랩들의 목표는 AVD가 Day 2 이후의 네트워크 운영을 얼마나 쉽게 만들어주는지 보여주는 것입니다. 아래 여섯 개의 랩을 진행합니다.
 
-> 아래 예시들은 이 저장소의 실제 AVD 6.4.0 스키마(`sites/dc{n}/group_vars/dc{n}_fabric.yml`, `dc{n}_fabric_services.yml`의 현재 내용)를 그대로 따릅니다. 값을 넣기 전에 해당 파일을 먼저 열어 기존 항목의 들여쓰기와 구조를 확인하세요.
+> 아래 예시들은 이 저장소의 실제 AVD 6.5.0 스키마(`sites/dc{n}/group_vars/dc{n}_fabric.yml`, `dc{n}_fabric_services.yml`의 현재 내용)를 그대로 따릅니다. 값을 넣기 전에 해당 파일을 먼저 열어 기존 항목의 들여쓰기와 구조를 확인하세요.
 
 > **배포 전에 설정을 미리 검증하고 싶다면** — 각 랩에서 `make build_dc{n}`을 끝낸 직후, 장비에 배포하기 전에
 > Batfish로 설정만 가지고 사전 검증(pre-flight)을 돌릴 수 있습니다. MTU 불일치, 중복 라우터 ID, BGP 세션이
@@ -477,7 +477,7 @@ ansible -i sites/dc1/inventory.yml dc1_dci -m debug -a "var=cv_device_tags"
 
 ## Lab 6 - AVD로 Connectivity Monitoring 설정 (s1-host1 ↔ s2-host2)
 
-지금까지의 랩은 사람이 직접 `ping`을 실행해서 EVPN/VXLAN 스트레치를 검증했습니다. 이 랩에서는 EOS의 **Connectivity Monitor** 기능(`monitor connectivity`)을 AVD로 구성해, leaf 스위치가 원격 호스트를 주기적으로 자동 프로빙(ICMP)하고 그 결과를 `show monitor connectivity`로 상시 확인할 수 있게 만듭니다. AVD 6.4.0 스키마의 `monitor_connectivity` 키(`eos_designs`/`eos_cli_config_gen` 모두 지원)를 `structured_config`로 얹는 방식입니다.
+지금까지의 랩은 사람이 직접 `ping`을 실행해서 EVPN/VXLAN 스트레치를 검증했습니다. 이 랩에서는 EOS의 **Connectivity Monitor** 기능(`monitor connectivity`)을 AVD로 구성해, leaf 스위치가 원격 호스트를 주기적으로 자동 프로빙(ICMP)하고 그 결과를 `show monitor connectivity`로 상시 확인할 수 있게 만듭니다. AVD 6.5.0 스키마의 `monitor_connectivity` 키(`eos_designs`/`eos_cli_config_gen` 모두 지원)를 `structured_config`로 얹는 방식입니다.
 
 > **모니터링 대상**: `s1-host1`(dc1, `10.10.10.11`)과 `s2-host2`(dc2, `10.10.10.22`)를 서로 반대쪽 DC에서 감시하도록 구성합니다 — dc1의 `LeafPair1`(`s1-leaf1`/`s1-leaf2`, 원래 `s1-host1`이 붙어 있는 leaf pair)이 `s2-host2`를, dc2의 `LeafPair2`(`s2-leaf3`/`s2-leaf4`, 원래 `s2-host2`가 붙어 있는 leaf pair)가 `s1-host1`을 서로 감시합니다. 이렇게 하면 두 leaf pair가 "내 로컬 호스트는 정상인데, 상대편 DC의 호스트까지 도달 가능한가"를 지속적으로 확인하는 구조가 됩니다.
 >
