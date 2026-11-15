@@ -21,6 +21,7 @@
 |---ci                           # CI 스크립트 (offline_build.sh, config_diff_summary.sh)
 |---lab guide                    # 실습 가이드 (아래 표)
 |---mcp                          # EOS MCP Server, 토폴로지 HTML 생성
+|---psirt                        # ANTA PSIRT Security Advisory 점검 (run_psirt.py)
 |---playbooks
     |---build_dc1.yml
     |---build_dc2.yml
@@ -392,6 +393,7 @@ deploy_dc1_eapi: ## Deploy DC2 Spine/Leaf AVD generated configs via eAPI
 | `evpn-vxlan-labs.md` | **메인 실습** Lab 1~6 (Day 2 운영) |
 | `multi-domain-evpn-vxlan-guide.md` | 멀티 도메인 EVPN/VXLAN 설계 설명 |
 | `batfish-preflight-guide.md` | 배포 **전** 설정 검증 (Batfish), 장애 주입 실습 §7-A(Null0)·§7-B(ACL) |
+| `anta-psirt-guide.md` | 실행 중인 장비의 Arista Security Advisory 점검 (`make psirt`) |
 | `ci-pipeline-guide.md` | PR 자동 검증 (GitHub Actions) |
 | `eos-mcp-server-guide.md` | AI 에이전트로 장비 조회, 토폴로지 HTML |
 | `claude-code-guide.md` / `codex-cli-guide.md` | AI 코딩 에이전트 사용법 |

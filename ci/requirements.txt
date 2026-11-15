@@ -2,4 +2,4 @@
 ansible-core==2.16.14
 pyavd[ansible-collection]==6.4.0
 pyavd-utils==0.0.7
-anta==1.10.0
+anta==1.11.0

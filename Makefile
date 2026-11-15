@@ -97,3 +97,15 @@ preflight_dc2: ## Batfish pre-deploy validation of DC2 only
 .PHONY: preflight_selftest
 preflight_selftest: ## Inject faults into snapshot copies to prove the pre-flight checks catch them
 	python3 batfish/selftest.py
+
+.PHONY: psirt
+psirt: ## ANTA PSIRT: check dc1+dc2 live EOS devices against Arista Security Advisories (read-only)
+	python3 psirt/run_psirt.py --dc all
+
+.PHONY: psirt_dc1
+psirt_dc1: ## ANTA PSIRT: check DC1 only
+	python3 psirt/run_psirt.py --dc dc1
+
+.PHONY: psirt_dc2
+psirt_dc2: ## ANTA PSIRT: check DC2 only
+	python3 psirt/run_psirt.py --dc dc2
