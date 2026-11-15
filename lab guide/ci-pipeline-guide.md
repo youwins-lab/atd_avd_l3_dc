@@ -4,7 +4,7 @@
 > 랩 장비에는 접속하지 않고, 비밀번호도 쓰지 않는다. 실패한 PR은 배포하면 장애가 나는 변경이다.
 
 ```
-PR 생성 ──▶ build (AVD 6.4.0 빌드 + drift 검사) ──▶ batfish (preflight + selftest)
+PR 생성 ──▶ build (AVD 6.5.0 빌드 + drift 검사) ──▶ batfish (preflight + selftest)
               └─ avd-next (최신 AVD로 빌드, 참고용·차단 안 함)
 ```
 

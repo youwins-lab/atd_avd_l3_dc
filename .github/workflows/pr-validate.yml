@@ -1,5 +1,5 @@
 # PR 검증 (1단계) — GitHub 호스티드 러너에서만 실행되며 ATD 랩에는 접속하지 않는다.
-#   build   : AVD 6.4.0 오프라인 빌드 → 커밋된 intended/documentation과 일치하는지(drift) 확인
+#   build   : AVD 6.5.0 오프라인 빌드 → 커밋된 intended/documentation과 일치하는지(drift) 확인
 #             + 장비 config diff를 PR 요약(Job Summary)에 표시
 #   batfish : 생성된 config로 Batfish preflight(라우팅/ACL 정적 분석) + selftest
 #   avd-next: (참고용, 실패해도 PR을 막지 않음) 최신 AVD로 빌드했을 때 config가 어떻게 바뀌는지
@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AVD_VERSION: "6.4.0"
+  AVD_VERSION: "6.5.0"
   BATFISH_TAG: "2026.08.27.3685"
 
 jobs:

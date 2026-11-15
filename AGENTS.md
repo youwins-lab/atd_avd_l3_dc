@@ -4,7 +4,7 @@ This file provides guidance to OpenAI Codex CLI (and other AI coding agents that
 
 ## What this repo is
 
-An Arista AVD (Ansible Validated Designs) 6.4.0 proof-of-concept: two independent L3LS EVPN-VXLAN datacenter
+An Arista AVD (Ansible Validated Designs) 6.5.0 proof-of-concept: two independent L3LS EVPN-VXLAN datacenter
 fabrics (`dc1`, `dc2`) deployed via Ansible + CloudVision (CVP), stretched over a DCI so the same tenant VLANs
 (10/20, subnets `10.10.10.0/24` and `10.20.20.0/24`) exist in both DCs. `s1-*` devices belong to `sites/dc1`,
 `s2-*` devices belong to `sites/dc2`. It runs inside Arista's ATD (Arista Test Drive) programmability IDE.
@@ -13,15 +13,16 @@ fabrics (`dc1`, `dc2`) deployed via Ansible + CloudVision (CVP), stretched over 
 
 ```bash
 python3 -m pip install --upgrade \
-  "pyavd==6.4.0" \
-  "pyavd-utils==0.0.7" \
+  "pyavd==6.5.0" \
+  "pyavd-utils==0.0.13" \
   "python-socks[asyncio]>=2.7.2" \
   "anta[cli]==1.11.0" \
   "distlib>=0.3.9"
-ansible-galaxy collection install arista.avd:==6.4.0
+ansible-galaxy collection install arista.avd:==6.5.0
 ```
 
-`pyavd` 6.4.0 pins `pyavd-utils==0.0.7` exactly — keep that pin in sync when bumping AVD, or pip refuses to resolve.
+`pyavd` 6.5.0 pins `pyavd-utils==0.0.13` exactly (6.4.0 pinned `0.0.7`) — keep that pin in sync when bumping AVD, or pip refuses to resolve.
+The `arista.avd` 6.5.0 collection also pulls `arista.eos>=12.2.0` (12.3.0 verified with the `eos_config` deploy playbooks).
 
 Lab credentials must be injected before anything will authenticate against the switches/CVP. `dc1.yml`/`dc2.yml`
 ship with `ansible_password: "###########"` as a placeholder — never commit a real password over that
